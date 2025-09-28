@@ -1,3 +1,4 @@
+// contexts/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '../types';
 import { api } from '../utils/api';
@@ -8,6 +9,7 @@ interface AuthContextType {
   login: (email: string, password: string, isAdmin?: boolean) => Promise<void>;
   logout: () => void;
   loading: boolean;
+  isPollMonitor: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,7 +36,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     if (token && userData) {
       try {
-        setUser(JSON.parse(userData));
+        const userObj = JSON.parse(userData);
+        setUser(userObj);
       } catch (error) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
@@ -66,6 +69,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null);
   };
 
+  // Check if current user is a poll monitor
+  const isPollMonitor = user?.role === 'poll_monitor';
+
   return (
     <AuthContext.Provider
       value={{
@@ -74,6 +80,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         login,
         logout,
         loading,
+        isPollMonitor
       }}
     >
       {children}

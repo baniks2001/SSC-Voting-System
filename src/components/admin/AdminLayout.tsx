@@ -1,4 +1,5 @@
-import React, { useState, ReactNode } from 'react';
+// components/admin/AdminLayout.tsx
+import React, { useState, ReactNode, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   Users, 
@@ -7,7 +8,8 @@ import {
   Monitor, 
   Menu, 
   X,
-  LogOut
+  LogOut,
+  Eye
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -23,17 +25,44 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   onTabChange 
 }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, logout, isPollMonitor } = useAuth();
 
-  const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    ...(user?.isSuperAdmin ? [
-      { id: 'admins', label: 'Add Admin', icon: UserPlus }
-    ] : []),
-    { id: 'candidates', label: 'Add Candidates', icon: Vote },
-    { id: 'voters', label: 'Add Voters', icon: Users },
-    { id: 'monitor', label: 'Poll Monitor', icon: Monitor }
-  ];
+  // Define navigation items based on user role
+  const getNavItems = () => {
+    // Poll Monitors can only see Poll Monitor tab
+    if (isPollMonitor) {
+      return [
+        { id: 'monitor', label: 'Poll Monitor', icon: Monitor }
+      ];
+    }
+
+    // Regular admins and super admins see all tabs
+    return [
+      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      ...(user?.isSuperAdmin ? [
+        { id: 'admins', label: 'Add Admin', icon: UserPlus }
+      ] : []),
+      { id: 'candidates', label: 'Add Candidates', icon: Vote },
+      { id: 'voters', label: 'Add Voters', icon: Users },
+      { id: 'monitor', label: 'Poll Monitor', icon: Monitor }
+    ];
+  };
+
+  const navItems = getNavItems();
+
+  // If poll monitor tries to access restricted tabs, redirect to monitor
+  useEffect(() => {
+    if (isPollMonitor && activeTab !== 'monitor') {
+      onTabChange('monitor');
+    }
+  }, [isPollMonitor, activeTab, onTabChange]);
+
+  // Set default tab for poll monitors
+  useEffect(() => {
+    if (isPollMonitor && activeTab !== 'monitor') {
+      onTabChange('monitor');
+    }
+  }, [isPollMonitor, onTabChange]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -54,7 +83,17 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               alt="Logo"
               className="w-14 h-14 rounded-full"
             />
-            <h1 className="text-lg font-bold text-gray-900">Admin Panel</h1>
+            <div>
+              <h1 className="text-lg font-bold text-gray-900">
+                {isPollMonitor ? 'Poll Monitor' : 'Admin Panel'}
+              </h1>
+              {isPollMonitor && (
+                <span className="text-xs text-blue-600 font-medium flex items-center mt-1">
+                  <Eye className="w-3 h-3 mr-1" />
+                  View Only Access
+                </span>
+              )}
+            </div>
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
@@ -78,6 +117,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             >
               <item.icon className="w-5 h-5 mr-3" />
               {item.label}
+              {isPollMonitor && (
+                <span className="ml-2 text-xs text-blue-600">(Live View)</span>
+              )}
             </button>
           ))}
         </nav>
@@ -94,7 +136,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                 {user?.fullName}
               </p>
               <p className="text-xs text-gray-600 truncate">
-                {user?.isSuperAdmin ? 'Super Admin' : user?.role}
+                {isPollMonitor ? 'Poll Monitor' : user?.isSuperAdmin ? 'Super Admin' : user?.role}
+                {isPollMonitor && ' (View Only)'}
               </p>
             </div>
           </div>
@@ -112,7 +155,17 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       <div className="lg:ml-64 flex-1">
         <div className="bg-white shadow-sm border-b border-gray-200 lg:hidden">
           <div className="flex items-center justify-between p-4">
-            <h1 className="text-lg font-semibold text-gray-900">Admin Panel</h1>
+            <div>
+              <h1 className="text-lg font-semibold text-gray-900">
+                {isPollMonitor ? 'Poll Monitor' : 'Admin Panel'}
+              </h1>
+              {isPollMonitor && (
+                <span className="text-xs text-blue-600 font-medium flex items-center mt-1">
+                  <Eye className="w-3 h-3 mr-1" />
+                  View Only Access
+                </span>
+              )}
+            </div>
             <button
               onClick={() => setSidebarOpen(true)}
               className="action-btn action-btn-secondary"
