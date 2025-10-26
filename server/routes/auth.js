@@ -1,3 +1,4 @@
+// routes/auth.js - Updated without is_active condition
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -9,19 +10,23 @@ const router = express.Router();
 // Voter login
 router.post('/voter/login', async (req, res) => {
   try {
-    const { studentId, password } = req.body;
+    const { studentId, emailOrStudentId, password } = req.body;
 
-    if (!studentId || !password) {
+    // Use studentId if provided, otherwise use emailOrStudentId
+    const actualStudentId = studentId || emailOrStudentId;
+
+    if (!actualStudentId || !password) {
       return res.status(400).json({ error: 'Student ID and password required' });
     }
 
+    // Remove is_active condition since column doesn't exist
     const [rows] = await pool.execute(
-      'SELECT * FROM voters WHERE student_id = ? AND is_active = true',
-      [studentId]
+      'SELECT * FROM voters WHERE student_id = ?',
+      [actualStudentId]
     );
 
     if (rows.length === 0) {
-      await logAuditAction(null, 'voter', 'LOGIN_FAILED', `Failed login attempt for student ID: ${studentId}`, req);
+      await logAuditAction(null, 'voter', 'LOGIN_FAILED', `Failed login attempt for student ID: ${actualStudentId}`, req);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -62,8 +67,6 @@ router.post('/voter/login', async (req, res) => {
 });
 
 // Admin login
-// routes/auth.js - Update the admin login part
-// Admin login
 router.post('/admin/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -99,9 +102,9 @@ router.post('/admin/login', async (req, res) => {
       });
     }
 
-    // Check regular admin
+    // Check regular admin - remove is_active condition
     const [rows] = await pool.execute(
-      'SELECT * FROM admins WHERE email = ? AND is_active = true',
+      'SELECT * FROM admins WHERE email = ?',
       [email]
     );
 

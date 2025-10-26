@@ -27,6 +27,8 @@ function AppContent() {
   // Voter state
   const [voteReceipt, setVoteReceipt] = useState(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [pendingVotes, setPendingVotes] = useState<any[]>([]);
 
   useEffect(() => {
     // Check if admin param exists in URL
@@ -36,6 +38,27 @@ function AppContent() {
     }
   }, []);
 
+  // Handle when user confirms vote in ReviewVote
+  const handleShowReceipt = (votes: any[]) => {
+    setPendingVotes(votes);
+    setShowReceipt(true);
+  };
+
+  // Handle blockchain submission completion from VoteReceipt
+  const handleVoteComplete = (receipt: any) => {
+    setVoteReceipt(receipt);
+    setShowReceipt(false);
+    // Update user context to mark as voted if needed
+    showToast('success', 'Vote successfully recorded on blockchain!');
+  };
+
+  // Handle back from VoteReceipt to ReviewVote
+  const handleBackToReview = () => {
+    setShowReceipt(false);
+    setPendingVotes([]);
+  };
+
+  // Legacy function for backward compatibility
   const handleVoteCast = (receipt: any) => {
     setVoteReceipt(receipt);
     setShowConfirmation(true);
@@ -43,7 +66,6 @@ function AppContent() {
 
   const handleVoteConfirm = async () => {
     try {
-      // In a real implementation, you might want to finalize the vote here
       setShowConfirmation(false);
       showToast('success', 'Vote confirmed and recorded!');
     } catch (error: any) {
@@ -97,7 +119,7 @@ function AppContent() {
     );
   }
 
-  // Voter Interface
+  // Voter has already voted - Show receipt
   if (user?.hasVoted) {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
@@ -106,6 +128,20 @@ function AppContent() {
     );
   }
 
+  // Show VoteReceipt for blockchain submission
+  if (showReceipt && pendingVotes.length > 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <VoteReceipt 
+          votes={pendingVotes}
+          onVoteComplete={handleVoteComplete}
+          onBack={handleBackToReview}
+        />
+      </div>
+    );
+  }
+
+  // Legacy confirmation flow (you can remove this eventually)
   if (showConfirmation && voteReceipt) {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
@@ -119,9 +155,13 @@ function AppContent() {
     );
   }
 
+  // Main voting interface
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <CastVote onVoteCast={handleVoteCast} />
+      <CastVote 
+        onVoteCast={handleVoteCast}
+        onShowReceipt={handleShowReceipt}
+      />
     </div>
   );
 }

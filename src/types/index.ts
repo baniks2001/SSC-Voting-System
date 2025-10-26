@@ -11,6 +11,8 @@ export interface User {
   voteHash?: string;
   votedAt?: string;
   isSuperAdmin?: boolean;
+  blockchainReceiptId?: string; // NEW: Add blockchain receipt ID
+  blockchainTxHash?: string;    // NEW: Add blockchain transaction hash
 }
 
 export interface Candidate {
@@ -36,6 +38,9 @@ export interface Voter {
   vote_hash?: string;
   voted_at?: string;
   created_at: string;
+  blockchain_receipt_id?: string;    // NEW: Blockchain receipt ID
+  blockchain_tx_hash?: string;       // NEW: Blockchain transaction hash
+  blockchain_verified?: boolean;     // NEW: Verification status
 }
 
 export interface Admin {
@@ -60,9 +65,30 @@ export interface VoteReceipt {
   votes: Vote[];
   timestamp: string;
   blockchainVerified: boolean;
+  blockchainReceiptId?: string;      // NEW
+  blockchainTxHash?: string;         // NEW
 }
 
-// types.ts
+// NEW: Blockchain-specific types
+export interface BlockchainVote {
+  studentId: string;
+  receiptId: string;
+  votes: string;
+  timestamp: number;
+  transactionHash: string;
+  blockNumber?: number;
+}
+
+export interface VoteVerification {
+  studentId: string;
+  receiptId: string;
+  votes: string;
+  timestamp: number;
+  verified: boolean;
+  blockNumber?: number;
+  transactionHash?: string;
+}
+
 export interface AuditLog {
   id: number;
   user_id?: number;
@@ -71,8 +97,8 @@ export interface AuditLog {
   details?: string;
   ip_address?: string;
   created_at: string;
-  user_name?: string;  // Add this
-  user_email?: string; // Add this
+  user_name?: string;
+  user_email?: string;
 }
 
 export interface DashboardStats {
@@ -97,7 +123,7 @@ export interface PollResults {
   lastUpdated: string;
 }
 
-interface ExportOptions {
+export interface ExportOptions {
   studentId: boolean;
   fullName: boolean;
   course: boolean;
@@ -107,21 +133,6 @@ interface ExportOptions {
   votedAt: boolean;
   createdAt: boolean;
   password: boolean;
-}
-
-// Initial state should match these keys exactly
-const [ExportOptions] = useState<ExportOptions>({
-  studentId: true,
-  fullName: true,
-  course: true,
-  yearLevel: true,
-  section: true,
-  hasVoted: true,
-  votedAt: false,
-  createdAt: false,
-  password: true
-});
-
-function useState<T>(arg0: { studentId: boolean; fullName: boolean; course: boolean; yearLevel: boolean; section: boolean; hasVoted: boolean; votedAt: boolean; createdAt: boolean; password: boolean; }): [any] {
-  throw new Error("Function not implemented.");
+  blockchainVerified?: boolean;      // NEW: Add blockchain verification status
+  blockchainTxHash?: boolean;        // NEW: Add blockchain transaction hash
 }

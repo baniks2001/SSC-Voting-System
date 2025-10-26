@@ -14,6 +14,7 @@ import votersRoutes from './routes/voters.js';
 import votingRoutes from './routes/voting.js';
 import pollRoutes from './routes/poll.js';
 import coursesRoutes from './routes/courses.js';
+import blockchainRoutes from './routes/blockchain.js';
 
 // Load .env from server folder; if not found, attempt to load from project root
 const envLoadResult = dotenv.config();
@@ -51,6 +52,7 @@ app.use('/api/voters', votersRoutes);
 app.use('/api/voting', votingRoutes);
 app.use('/api/poll', pollRoutes);
 app.use('/api/courses', coursesRoutes);
+app.use('/api/blockchain', blockchainRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

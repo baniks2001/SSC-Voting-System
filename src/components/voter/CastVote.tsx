@@ -4,16 +4,19 @@ import { Candidate } from '../../types';
 import { api } from '../../utils/api';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { useToast } from '../common/Toast';
+import { ReviewVote } from './ReviewVote';
 
 interface CastVoteProps {
   onVoteCast: (receipt: any) => void;
+  onShowReceipt: (votes: any[]) => void;
 }
 
-export const CastVote: React.FC<CastVoteProps> = ({ onVoteCast }) => {
+export const CastVote: React.FC<CastVoteProps> = ({ onVoteCast, onShowReceipt }) => {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selectedVotes, setSelectedVotes] = useState<{ [position: string]: number }>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [showReview, setShowReview] = useState(false);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -40,27 +43,21 @@ export const CastVote: React.FC<CastVoteProps> = ({ onVoteCast }) => {
     }));
   };
 
-  const handleSubmit = async () => {
-    const votes = Object.entries(selectedVotes).map(([position, candidateId]) => ({
-      candidateId,
-      position
-    }));
-
-    if (votes.length !== positions.length) {
+  const handleReviewVote = () => {
+    if (Object.keys(selectedVotes).length !== positions.length) {
       showToast('warning', 'Please select a candidate for each position');
       return;
     }
+    setShowReview(true);
+  };
 
-    setSubmitting(true);
-    try {
-      const response = await api.post('/voting/cast', { votes });
-      onVoteCast(response.receipt);
-      showToast('success', 'Vote cast successfully!');
-    } catch (error: any) {
-      showToast('error', error.message || 'Failed to cast vote');
-    } finally {
-      setSubmitting(false);
-    }
+  const handleBackToVoting = () => {
+    setShowReview(false);
+  };
+
+  const handleConfirmVote = (votes: any[]) => {
+    // Pass the votes to the receipt component for blockchain submission
+    onShowReceipt(votes);
   };
 
   if (loading) {
@@ -71,6 +68,20 @@ export const CastVote: React.FC<CastVoteProps> = ({ onVoteCast }) => {
     );
   }
 
+  // Show Review Screen
+  if (showReview) {
+    return (
+      <ReviewVote
+        selectedVotes={selectedVotes}
+        candidates={candidates}
+        onBack={handleBackToVoting}
+        onConfirm={handleConfirmVote}
+        loading={submitting}
+      />
+    );
+  }
+
+  // Show Voting Screen (rest of your existing CastVote JSX)
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="card animate-fadeIn">
@@ -135,18 +146,12 @@ export const CastVote: React.FC<CastVoteProps> = ({ onVoteCast }) => {
                 Selected: {Object.keys(selectedVotes).length} of {positions.length} positions
               </div>
               <button
-                onClick={handleSubmit}
-                disabled={submitting || Object.keys(selectedVotes).length !== positions.length}
+                onClick={handleReviewVote}
+                disabled={Object.keys(selectedVotes).length !== positions.length}
                 className="btn-primary flex items-center space-x-2"
               >
-                {submitting ? (
-                  <LoadingSpinner size="sm" color="white" />
-                ) : (
-                  <>
-                    <span>Review Vote</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
+                <span>Review Vote</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>
