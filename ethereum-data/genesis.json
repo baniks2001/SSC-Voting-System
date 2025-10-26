@@ -1,7 +1,21 @@
 {
   "config": {
-    "chainId": 1337
+    "chainId": 1337,
+    "homesteadBlock": 0,
+    "eip150Block": 0,
+    "eip155Block": 0,
+    "eip158Block": 0,
+    "byzantiumBlock": 0,
+    "constantinopleBlock": 0,
+    "petersburgBlock": 0,
+    "istanbulBlock": 0,
+    "berlinBlock": 0,
+    "londonBlock": 0,
+    "mergeNetsplitBlock": 0,
+    "terminalTotalDifficulty": 0,
+    "terminalTotalDifficultyPassed": true
   },
-  "difficulty": "0x400",
-  "gasLimit": "0x8000000"
+  "alloc": {},
+  "difficulty": "0x1",
+  "gasLimit": "0x1C9C380"
 }

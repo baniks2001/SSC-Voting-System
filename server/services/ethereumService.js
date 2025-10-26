@@ -7,12 +7,13 @@ class EthereumService {
     this.contract = null;
     this.isConnected = false;
     this.account = null;
+    this.networkType = 'pos'; // 'pos' for Proof-of-Stake, 'pow' for Proof-of-Work
     this.init();
   }
 
   async init() {
     try {
-      // Connect to geth node - use port 8545 (HTTP-RPC) instead of 8551 (WebSocket)
+      // Connect to geth node
       const providerUrl = process.env.ETHEREUM_PROVIDER_URL || 'http://localhost:8545';
       this.web3 = new Web3(new Web3.providers.HttpProvider(providerUrl));
       
@@ -23,6 +24,9 @@ class EthereumService {
       console.log(`✅ Connected to Ethereum node: ${isListening}`);
       console.log(`🌐 Provider URL: ${providerUrl}`);
       
+      // Get network info to determine type
+      await this.detectNetworkType();
+      
       // Initialize account if private key is provided
       await this.initAccount();
       
@@ -31,8 +35,30 @@ class EthereumService {
       
     } catch (error) {
       console.error('❌ Failed to connect to Ethereum node:', error.message);
-      console.log('💡 Make sure geth is running with: geth --http --http.port 8545 --http.api "web3,eth,net,personal,miner"');
+      console.log('💡 Make sure geth is running on port 8545');
       this.isConnected = false;
+    }
+  }
+
+  async detectNetworkType() {
+    try {
+      const networkId = await this.web3.eth.net.getId();
+      const block = await this.web3.eth.getBlock('latest');
+      
+      // Check if it's a PoS network (no mining)
+      if (block.difficulty === '0' || networkId === 1337) {
+        this.networkType = 'pos';
+        console.log('🔗 Network type: Proof-of-Stake (PoS)');
+      } else {
+        this.networkType = 'pow';
+        console.log('⛏️  Network type: Proof-of-Work (PoW)');
+      }
+      
+      console.log(`📊 Network ID: ${networkId}`);
+      
+    } catch (error) {
+      console.log('⚠️  Could not detect network type, assuming PoS');
+      this.networkType = 'pos';
     }
   }
 
@@ -50,6 +76,9 @@ class EthereumService {
         const accounts = await this.web3.eth.getAccounts();
         if (accounts.length > 0) {
           console.log(`✅ Node accounts available: ${accounts.length}`);
+          console.log(`📝 Primary account: ${accounts[0]}`);
+        } else {
+          console.log('❌ No accounts available in the node');
         }
       }
     } catch (error) {
@@ -74,7 +103,6 @@ class EthereumService {
   }
 
   getContractABI() {
-    // Simple Voting Contract ABI
     return [
       {
         "inputs": [
@@ -146,108 +174,126 @@ class EthereumService {
     return CryptoJS.AES.encrypt(voteString, encryptionKey).toString();
   }
 
-  decryptVoteData(encryptedData) {
-    try {
-      const encryptionKey = process.env.VOTE_ENCRYPTION_KEY || 'voting-system-default-key-2024';
-      const bytes = CryptoJS.AES.decrypt(encryptedData, encryptionKey);
-      return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-    } catch (error) {
-      console.error('Error decrypting vote data:', error);
-      return null;
-    }
-  }
-
   async submitVote(voteData) {
-    try {
-      if (!this.isConnected) {
-        throw new Error('Not connected to Ethereum network');
-      }
-
-      const { voterId, votes, timestamp } = voteData;
-      
-      // Generate voter hash for anonymity
-      const voterHash = this.generateVoterHash(voterId, 'anonymous', timestamp);
-      
-      // Encrypt vote data for privacy
-      const encryptedVoteData = this.encryptVoteData(votes);
-      
-      let transactionHash;
-      let blockNumber;
-      let gasUsed;
-
-      // Use direct transaction (since we don't have a contract deployed yet)
-      const privateKey = process.env.ETHEREUM_PRIVATE_KEY;
-      
-      if (!privateKey && !this.account) {
-        throw new Error('Ethereum private key not configured and no account available');
-      }
-
-      const fromAccount = this.account || (await this.web3.eth.getAccounts())[0];
-      
-      if (!fromAccount) {
-        throw new Error('No Ethereum account available for transaction');
-      }
-
-      // Prepare vote data for blockchain
-      const votePayload = {
-        voterHash,
-        encryptedVoteData,
-        timestamp,
-        voteCount: votes.length
-      };
-
-      // Convert to hex data
-      const voteDataHex = this.web3.utils.asciiToHex(JSON.stringify(votePayload));
-
-      const txObject = {
-        from: fromAccount.address,
-        to: process.env.VOTE_RECEIPT_ADDRESS || fromAccount.address, // Send to self if no receipt address
-        data: voteDataHex,
-        gas: 100000,
-        gasPrice: await this.web3.eth.getGasPrice(),
-        value: '0x0'
-      };
-
-      let receipt;
-      
-      if (privateKey) {
-        // Sign transaction with private key
-        const signedTx = await this.web3.eth.accounts.signTransaction(txObject, privateKey);
-        receipt = await this.web3.eth.sendSignedTransaction(signedTx.rawTransaction);
-      } else {
-        // Use node's account (requires unlocked account)
-        receipt = await this.web3.eth.sendTransaction(txObject);
-      }
-      
-      transactionHash = receipt.transactionHash;
-      blockNumber = receipt.blockNumber;
-      gasUsed = receipt.gasUsed;
-
-      console.log(`✅ Vote submitted successfully!`);
-      console.log(`   Transaction: ${transactionHash}`);
-      console.log(`   Block: ${blockNumber}`);
-      console.log(`   Gas used: ${gasUsed}`);
-
-      return {
-        success: true,
-        receipt: {
-          transactionHash,
-          blockNumber,
-          voterHash,
-          gasUsed,
-          timestamp: new Date().toISOString(),
-          from: fromAccount.address
-        }
-      };
-
-    } catch (error) {
-      console.error('❌ Error submitting vote to blockchain:', error);
-      return {
-        success: false,
-        error: error.message
-      };
+  try {
+    if (!this.isConnected) {
+      throw new Error('Not connected to Ethereum network');
     }
+
+    const { voterId, votes, timestamp } = voteData;
+    
+    // Generate voter hash for anonymity
+    const voterHash = this.generateVoterHash(voterId, 'anonymous', timestamp);
+    
+    // Encrypt vote data for privacy
+    const encryptedVoteData = this.encryptVoteData(votes);
+    
+    // Get accounts from node
+    const accounts = await this.web3.eth.getAccounts();
+    if (accounts.length === 0) {
+      throw new Error('No Ethereum accounts available in the node');
+    }
+
+    const fromAccount = accounts[0];
+    console.log(`📤 Submitting vote from account: ${fromAccount}`);
+
+    // Check account balance
+    const balance = await this.web3.eth.getBalance(fromAccount);
+    const balanceEth = this.web3.utils.fromWei(balance, 'ether');
+    console.log(`💰 Account balance: ${balanceEth} ETH`);
+
+    if (parseFloat(balanceEth) < 0.001) {
+      throw new Error(`Insufficient balance: ${balanceEth} ETH. Need at least 0.001 ETH for transaction.`);
+    }
+
+    // Prepare vote data for blockchain
+    const votePayload = {
+      voterHash,
+      encryptedVoteData,
+      timestamp,
+      voteCount: votes.length,
+      network: 'ssc-voting-1337',
+      type: 'vote'
+    };
+
+    // Convert to hex data (shorter payload)
+    const voteDataHex = this.web3.utils.utf8ToHex(JSON.stringify(votePayload).substring(0, 1000));
+
+    // Get current gas price
+    const gasPrice = await this.web3.eth.getGasPrice();
+    console.log(`⛽ Gas price: ${this.web3.utils.fromWei(gasPrice, 'gwei')} gwei`);
+
+    // Estimate gas more accurately
+    let gasLimit = 50000;
+    try {
+      const gasEstimate = await this.web3.eth.estimateGas({
+        from: fromAccount,
+        to: fromAccount, // Send to self to avoid contract issues
+        data: voteDataHex
+      });
+      gasLimit = Math.floor(gasEstimate * 1.2); // Add 20% buffer
+      console.log(`📊 Estimated gas: ${gasEstimate}, Using: ${gasLimit}`);
+    } catch (estimateError) {
+      console.log('⚠️  Could not estimate gas, using default:', gasLimit);
+    }
+
+    const txObject = {
+      from: fromAccount,
+      to: fromAccount, // Send to SELF to avoid any contract/revert issues
+      data: voteDataHex,
+      gas: gasLimit,
+      gasPrice: gasPrice,
+      value: '0x0'
+    };
+
+    console.log('⛓️  Creating transaction...', {
+      from: fromAccount,
+      to: txObject.to,
+      gas: gasLimit,
+      dataLength: voteDataHex.length
+    });
+
+    // Use node's account
+    console.log('🔓 Sending transaction...');
+    const receipt = await this.web3.eth.sendTransaction(txObject);
+    
+    console.log(`✅ Vote submitted successfully!`);
+    console.log(`   Transaction: ${receipt.transactionHash}`);
+    console.log(`   Block: ${receipt.blockNumber}`);
+    console.log(`   Gas used: ${receipt.gasUsed}`);
+
+    return {
+      success: true,
+      receipt: {
+        transactionHash: receipt.transactionHash,
+        blockNumber: receipt.blockNumber,
+        voterHash,
+        gasUsed: receipt.gasUsed,
+        timestamp: new Date().toISOString(),
+        from: fromAccount,
+        network: 'private-1337'
+      }
+    };
+
+  } catch (error) {
+    console.error('❌ Error submitting vote to blockchain:', error);
+    
+    // Provide more specific error messages
+    let errorMessage = error.message;
+    if (error.message.includes('reverted')) {
+      errorMessage = 'Transaction failed. This may be due to insufficient funds or gas issues.';
+    } else if (error.message.includes('insufficient funds')) {
+      errorMessage = 'Insufficient ETH for transaction gas fees.';
+    } else if (error.message.includes('gas')) {
+      errorMessage = 'Gas calculation error. Please try again.';
+    }
+    
+    return {
+      success: false,
+      error: errorMessage
+    };
   }
+}
 
   async verifyTransaction(transactionHash) {
     try {
@@ -290,14 +336,13 @@ class EthereumService {
       const gasPrice = await this.web3.eth.getGasPrice();
       const accounts = await this.web3.eth.getAccounts();
       const networkId = await this.web3.eth.net.getId();
-      const isMining = await this.web3.eth.isMining();
 
       return {
         blockNumber,
         gasPrice: this.web3.utils.fromWei(gasPrice, 'gwei'),
         accounts: accounts.length,
         networkId,
-        isMining,
+        networkType: this.networkType,
         isConnected: this.isConnected
       };
     } catch (error) {
@@ -338,9 +383,10 @@ class EthereumService {
       if (info.isConnected) {
         console.log('✅ Ethereum node connection test: PASSED');
         console.log(`   Network ID: ${info.networkId}`);
+        console.log(`   Network Type: ${info.networkType}`);
         console.log(`   Current block: ${info.blockNumber}`);
         console.log(`   Accounts available: ${info.accounts}`);
-        console.log(`   Mining: ${info.isMining}`);
+        console.log(`   Gas price: ${info.gasPrice} gwei`);
         return true;
       } else {
         console.log('❌ Ethereum node connection test: FAILED');

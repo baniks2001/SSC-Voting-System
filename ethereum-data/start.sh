@@ -1,30 +1,36 @@
 #!/bin/bash
-echo "Starting Ethereum private network..."
 
-# Check if genesis exists, create if not
-if [ ! -f "genesis.json" ]; then
-    cat > genesis.json << 'EOF'
-{
-  "config": {
-    "chainId": 1337
-  },
-  "difficulty": "0x400",
-  "gasLimit": "0x8000000"
-}
-EOF
-    echo "Created genesis.json"
+echo "🔗 Starting Ethereum node from current directory..."
+
+# Check if setup is complete
+if [ ! -d "data/geth" ]; then
+    echo "❌ Blockchain not initialized. Run ./setup.sh first."
+    exit 1
 fi
 
-# Remove existing chain data to ensure clean start
-if [ -d "data/geth" ]; then
-    echo "Removing existing blockchain data..."
-    rm -rf data/geth
+# Get account address
+ACCOUNT_FILE=$(ls data/keystore/ 2>/dev/null | head -1)
+if [ -z "$ACCOUNT_FILE" ]; then
+    echo "❌ No accounts found. Run ./setup.sh first."
+    exit 1
 fi
 
-# Initialize blockchain
-echo "Initializing blockchain..."
-geth --datadir ./data init genesis.json
+ACCOUNT_ADDRESS=$(echo $ACCOUNT_FILE | grep -o '[a-fA-F0-9]\{40\}')
+ACCOUNT_ADDRESS="0x$ACCOUNT_ADDRESS"
 
-# Start geth
-echo "Starting geth node..."
-exec geth --datadir ./data --networkid 1337 --http --http.port 8545 --http.api "web3,eth,net,miner" --nodiscover console
+echo "📝 Account: $ACCOUNT_ADDRESS"
+echo "🌐 Starting on: http://localhost:8545"
+echo "🔗 Chain ID: 1337"
+echo "📡 Sync mode: full"
+echo ""
+
+# Start geth without deprecated flags
+exec geth --datadir ./data \
+    --networkid 1337 \
+    --http \
+    --http.addr "0.0.0.0" \
+    --http.port 8545 \
+    --http.api "web3,eth,net" \
+    --http.corsdomain "*" \
+    --syncmode "full" \
+    --nodiscover

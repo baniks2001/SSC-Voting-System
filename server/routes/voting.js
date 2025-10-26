@@ -4,10 +4,139 @@ import { pool } from '../config/database.js';
 import { authenticateVoter } from '../middleware/auth.js';
 import { blockchain } from '../utils/blockchain.js';
 import { logAuditAction } from '../utils/audit.js';
+import { ethereumService } from '../services/ethereumService.js';
 
 const router = express.Router();
 
-// Cast vote
+// Submit vote to Ethereum blockchain
+router.post('/cast-blockchain', async (req, res) => {
+  try {
+    console.log('🔗 Blockchain vote submission attempt');
+    const { voterId, votes, timestamp } = req.body;
+
+    if (!voterId || !votes || !Array.isArray(votes)) {
+      console.log('❌ Invalid vote data for blockchain submission');
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid vote data: voterId and votes array are required'
+      });
+    }
+
+    console.log('📥 Received blockchain vote submission:', {
+      voterId,
+      voteCount: votes.length,
+      timestamp
+    });
+
+    // Get voter details from database
+    const [voterRows] = await pool.execute(
+      'SELECT * FROM voters WHERE student_id = ?',
+      [voterId]
+    );
+
+    if (voterRows.length === 0) {
+      console.log('❌ Voter not found for blockchain submission:', voterId);
+      return res.status(404).json({
+        success: false,
+        error: 'Voter not found'
+      });
+    }
+
+    const voter = voterRows[0];
+
+    // Check if voter has already voted
+    if (voter.has_voted) {
+      console.log('❌ Voter already voted (blockchain):', voterId);
+      return res.status(400).json({
+        success: false,
+        error: 'Voter has already cast a vote'
+      });
+    }
+
+    // Test blockchain connection first
+    const blockchainInfo = await ethereumService.getBlockchainInfo();
+    if (!blockchainInfo.isConnected) {
+      console.log('❌ Blockchain node not connected');
+      return res.status(500).json({
+        success: false,
+        error: 'Blockchain node is not connected. Please check if geth is running.'
+      });
+    }
+
+    console.log('✅ Blockchain connection verified:', {
+      networkId: blockchainInfo.networkId,
+      blockNumber: blockchainInfo.blockNumber,
+      accounts: blockchainInfo.accounts
+    });
+
+    // Prepare vote data for blockchain
+    const voteData = {
+      voterId: voter.student_id,
+      votes: votes,
+      timestamp: timestamp || new Date().toISOString()
+    };
+
+    console.log('⛓️  Submitting vote to Ethereum blockchain...');
+
+    // Submit to Ethereum blockchain
+    const blockchainResult = await ethereumService.submitVote(voteData);
+
+    if (!blockchainResult.success) {
+      console.log('❌ Blockchain submission failed:', blockchainResult.error);
+      return res.status(500).json({
+        success: false,
+        error: `Blockchain submission failed: ${blockchainResult.error}`
+      });
+    }
+
+    console.log('✅ Vote successfully submitted to blockchain:', {
+      transactionHash: blockchainResult.receipt.transactionHash,
+      blockNumber: blockchainResult.receipt.blockNumber
+    });
+
+    // Update database to mark voter as voted
+    await pool.execute(
+      'UPDATE voters SET has_voted = true, vote_hash = ?, voted_at = ? WHERE id = ?',
+      [blockchainResult.receipt.voterHash, new Date(), voter.id]
+    );
+
+    // Record the vote in the votes table
+    for (const vote of votes) {
+      await pool.execute(
+        'INSERT INTO votes (voter_id, candidate_id, position, voter_hash, transaction_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        [voter.id, vote.candidateId, vote.position, blockchainResult.receipt.voterHash, blockchainResult.receipt.transactionHash, new Date()]
+      );
+    }
+
+    // Update candidate vote counts
+    for (const vote of votes) {
+      await pool.execute(
+        'UPDATE candidates SET vote_count = vote_count + 1 WHERE id = ?',
+        [vote.candidateId]
+      );
+    }
+
+    await logAuditAction(voter.id, 'voter', 'BLOCKCHAIN_VOTE_CAST', 
+      `Vote cast on Ethereum blockchain. TX: ${blockchainResult.receipt.transactionHash}`, req);
+
+    console.log('🎉 Blockchain vote process completed successfully for voter:', voterId);
+
+    res.json({
+      success: true,
+      receipt: blockchainResult.receipt,
+      message: 'Vote successfully recorded on Ethereum blockchain'
+    });
+
+  } catch (error) {
+    console.error('❌ Blockchain vote submission error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to submit vote to blockchain: ' + error.message
+    });
+  }
+});
+
+// Cast vote (original method)
 router.post('/cast', authenticateVoter, async (req, res) => {
   try {
     console.log('🗳️ Vote casting attempt by voter ID:', req.user.id);
