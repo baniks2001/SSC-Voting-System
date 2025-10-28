@@ -164,12 +164,24 @@ const generatePassword = () => {
   }
 
   try {
-    const lastThreeDigits = studentId.trim().slice(-3);
+    // Get the components
+    const fullStudentId = studentId.trim();
+    
+    // Extract last name (last part of the full name)
     const nameParts = fullName.trim().split(/\s+/);
-    const initials = nameParts.map(part => part.charAt(0).toLowerCase()).join('');
+    const lastName = nameParts[nameParts.length - 1].toLowerCase();
+    
+    const year = yearLevel.toString();
     const cleanSection = (section || '').replace(/\s+/g, '').toLowerCase();
-    const generatedPassword = `${initials}${yearLevel}${cleanSection}-${lastThreeDigits}`;
-
+    
+    // Generate 5 random digits
+    const randomDigits = Array.from({ length: 5 }, () => 
+      Math.floor(Math.random() * 10).toString()
+    ).join('');
+    
+    // Combine all components
+    const generatedPassword = `${fullStudentId}${lastName}${year}${cleanSection}${randomDigits}`;
+    
     setFormData({ ...formData, password: generatedPassword });
     showToast('success', 'Password generated successfully');
   } catch (error) {

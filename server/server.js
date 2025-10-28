@@ -29,7 +29,7 @@ const PORT = process.env.SERVER_PORT || 5000;
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: true, // Allow all origins in development
   credentials: true
 }));
 
@@ -79,7 +79,7 @@ const startServer = async () => {
       process.exit(1);
     }
 
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0',() => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 API Documentation: http://localhost:${PORT}/api/health`);
       console.log(`🔒 Environment: ${process.env.NODE_ENV || 'development'}`);

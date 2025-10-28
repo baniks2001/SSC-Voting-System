@@ -1,0 +1,32 @@
+# Database Configuration
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=
+DB_NAME=student_voting_system
+DB_PORT=3306
+
+# Super Admin Configuration (Hardcoded in system)
+SUPER_ADMIN_EMAIL=superadmin@voting.edu
+SUPER_ADMIN_PASSWORD=SuperAdmin@2025!
+
+# JWT Secret
+JWT_SECRET=sscvoting@2025blockchain
+
+# Ethereum Blockchain Configuration
+ETHEREUM_PROVIDER_URL=http://localhost:8545
+ETHEREUM_ACCOUNT_PASSWORD=voting-system-password-1761640036
+ETHEREUM_ACCOUNT_ADDRESS=0x4d3a53b66ecd40cb44f2722f20289354353261e7
+ETHEREUM_PRIVATE_KEY=voting-system-password-1761640036
+VOTING_CONTRACT_ADDRESS=
+VOTE_RECEIPT_ADDRESS=
+
+# Network Configuration
+ETHEREUM_NETWORK=development
+
+# Server Configuration
+NODE_ENV=development
+PORT=5000
+SERVER_PORT=5000
+CLIENT_URL=http://localhost:5173
+
+VITE_API_URL=http://localhost:5000

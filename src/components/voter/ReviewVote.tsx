@@ -1,5 +1,5 @@
-import React from 'react';
-import { User, School, Calendar, ArrowLeft, ShieldCheck } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import { User, School, Calendar, ArrowLeft, ShieldCheck, Hash, CheckCircle } from 'lucide-react';
 import { Candidate } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import { LoadingSpinner } from '../common/LoadingSpinner';
@@ -8,7 +8,7 @@ interface ReviewVoteProps {
   selectedVotes: { [position: string]: number };
   candidates: Candidate[];
   onBack: () => void;
-  onConfirm: (votes: any[]) => void;
+  onConfirm: (votes: any[], ballotId: string) => void;
   loading?: boolean;
 }
 
@@ -20,6 +20,42 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
   loading = false
 }) => {
   const { user } = useAuth();
+  const [ballotId, setBallotId] = useState<string>('');
+
+  // Generate secure ballot ID using Web Crypto API
+  const generateBallotId = useCallback(async (): Promise<string> => {
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    const timestamp = Date.now().toString();
+    const randomSalt = Math.random().toString(36).substring(2, 15);
+    const voterData = `${user.studentId}-${user.fullName}-${timestamp}-${randomSalt}`;
+    
+    // Use Web Crypto API for secure hashing
+    const encoder = new TextEncoder();
+    const data = encoder.encode(voterData);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    return `ballot_${hashHex.substring(0, 16)}_${timestamp}`;
+  }, [user]);
+
+  // Initialize ballot ID on component mount
+  React.useEffect(() => {
+    const initBallotId = async () => {
+      try {
+        const id = await generateBallotId();
+        setBallotId(id);
+      } catch (error) {
+        console.error('Error generating ballot ID:', error);
+        setBallotId('error_generating_id');
+      }
+    };
+
+    initBallotId();
+  }, [generateBallotId]);
 
   // Get candidate details for each selected vote
   const getSelectedCandidate = (position: string) => {
@@ -27,160 +63,316 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
     return candidates.find(c => c.id === candidateId);
   };
 
-  const positions = Object.keys(selectedVotes);
-
-  const handleConfirm = () => {
-    const votes = Object.entries(selectedVotes).map(([position, candidateId]) => ({
-      candidateId,
-      position,
-      candidateName: getSelectedCandidate(position)?.name,
-      candidateParty: getSelectedCandidate(position)?.party
-    }));
-    onConfirm(votes);
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    e.currentTarget.src = '/default-avatar.png';
   };
 
+  const handleConfirm = async () => {
+    try {
+      const votes = Object.entries(selectedVotes).map(([position, candidateId]) => {
+        const candidate = getSelectedCandidate(position);
+        return {
+          candidateId,
+          position,
+          candidateName: candidate?.name || 'Unknown Candidate',
+          candidateParty: candidate?.party || 'No Party',
+          ballotId
+        };
+      });
+      onConfirm(votes, ballotId);
+    } catch (error) {
+      console.error('Error preparing vote:', error);
+      alert('Error preparing your vote. Please try again.');
+    }
+  };
+
+  const formatBallotId = (id: string) => {
+    if (!id) return 'N/A';
+    // Shorter format for mobile
+    if (window.innerWidth < 768) {
+      return `${id.substring(0, 6)}...${id.substring(id.length - 6)}`;
+    }
+    return `${id.substring(0, 8)}...${id.substring(id.length - 8)}`;
+  };
+
+  const positions = Object.keys(selectedVotes);
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-lg border border-gray-200 p-6 text-center">
+          <div className="text-gray-800 py-8">
+            <ShieldCheck className="w-16 h-16 mx-auto mb-4 text-blue-800" />
+            <p className="text-lg font-semibold">User not authenticated</p>
+            <p className="text-sm text-gray-600 mt-2">Please log in again to continue voting</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <div className="card animate-fadeIn">
-        <div className="card-header">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-              <ShieldCheck className="w-6 h-6 text-green-600" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">Review Your Vote</h1>
-              <p className="text-gray-600">Please verify your selections before submitting</p>
+    <div className="min-h-screen bg-white py-4 px-3 sm:px-4 lg:px-6">
+      {/* Mobile First Container */}
+      <div className="max-w-6xl mx-auto">
+        {/* Responsive Header */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 mb-4 sm:mb-6 overflow-hidden">
+          <div className="p-4 sm:p-6 bg-white">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
+              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <ShieldCheck className="w-6 h-6 text-blue-800" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
+                  Review Your Vote
+                </h1>
+                <p className="text-gray-600 text-sm sm:text-base mt-1">
+                  Please verify your selections before submitting
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="card-body">
-          {/* Voter Information */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <h2 className="text-lg font-semibold text-blue-900 mb-3">Voter Information</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-center space-x-3">
-                <User className="w-5 h-5 text-blue-600" />
-                <div>
-                  <p className="text-sm text-blue-700">Student ID</p>
-                  <p className="font-medium text-blue-900">{user?.studentId}</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <User className="w-5 h-5 text-blue-600" />
-                <div>
-                  <p className="text-sm text-blue-700">Full Name</p>
-                  <p className="font-medium text-blue-900">{user?.fullName}</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <School className="w-5 h-5 text-blue-600" />
-                <div>
-                  <p className="text-sm text-blue-700">Course & Section</p>
-                  <p className="font-medium text-blue-900">
-                    {user?.course} - {user?.section}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <Calendar className="w-5 h-5 text-blue-600" />
-                <div>
-                  <p className="text-sm text-blue-700">Year Level</p>
-                  <p className="font-medium text-blue-900">
-                    {user?.yearLevel ? `Year ${user.yearLevel}` : 'N/A'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Selected Candidates */}
-          <div className="space-y-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Your Selections</h2>
-            
-            {positions.map((position) => {
-              const candidate = getSelectedCandidate(position);
-              return (
-                <div key={position} className="border border-gray-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-gray-900 mb-3 text-lg">{position}</h3>
-                  {candidate ? (
-                    <div className="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
-                      <img
-                        src={candidate.image_url || `https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg?auto=compress&cs=tinysrgb&w=80&h=80&fit=crop`}
-                        alt={candidate.name}
-                        className="w-16 h-16 rounded-full object-cover"
-                      />
-                      <div className="flex-1">
-                        <h4 className="font-medium text-gray-900 text-lg">{candidate.name}</h4>
-                        <p className="text-gray-600">{candidate.party}</p>
-                        {candidate.manifesto && (
-                          <p className="text-sm text-gray-500 mt-1">{candidate.manifesto}</p>
-                        )}
-                      </div>
-                      <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                        <ShieldCheck className="w-4 h-4 text-white" />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-red-500 bg-red-50 p-3 rounded-lg">
-                      No candidate selected for this position
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Important Notice */}
-          <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <div className="flex items-start space-x-3">
-              <ShieldCheck className="w-5 h-5 text-yellow-600 mt-0.5" />
-              <div>
-                <h4 className="font-semibold text-yellow-800">Important Notice</h4>
-                <ul className="text-yellow-700 text-sm mt-1 space-y-1">
-                  <li>• Once submitted, your vote cannot be changed or revoked</li>
-                  <li>• Your vote is anonymous and securely encrypted</li>
-                  <li>• Verify all selections are correct before confirming</li>
-                  <li>• You will receive a voting receipt after submission</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <div className="flex flex-col sm:flex-row gap-4 justify-between">
-              <button
-                onClick={onBack}
-                disabled={loading}
-                className="btn-secondary flex items-center justify-center space-x-2 sm:w-auto"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>Back to Voting</span>
-              </button>
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+          {/* Left Column - Voter Info & Actions */}
+          <div className="lg:col-span-1 space-y-4 sm:space-y-6">
+            {/* Voter Information Card */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <User className="w-5 h-5 mr-2 text-blue-800" />
+                Voter Information
+              </h2>
               
-              <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-                <div className="text-sm text-gray-600 text-center sm:text-right">
-                  {positions.length} position{positions.length !== 1 ? 's' : ''} selected
+              <div className="space-y-4">
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-xs font-medium text-gray-700 mb-1">Student ID</p>
+                  <p className="font-semibold text-gray-900 text-sm truncate">
+                    {user.studentId}
+                  </p>
                 </div>
-                <button
-                  onClick={handleConfirm}
-                  disabled={loading}
-                  className="btn-primary flex items-center justify-center space-x-2 sm:w-auto min-w-[140px]"
-                >
-                  {loading ? (
-                    <LoadingSpinner size="sm" color="white" />
-                  ) : (
-                    <>
-                      <ShieldCheck className="w-4 h-4" />
-                      <span>Confirm & Submit Vote</span>
-                    </>
-                  )}
-                </button>
+                
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-xs font-medium text-gray-700 mb-1">Full Name</p>
+                  <p className="font-semibold text-gray-900 text-sm truncate">
+                    {user.fullName}
+                  </p>
+                </div>
+                
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-xs font-medium text-gray-700 mb-1">Course & Section</p>
+                  <p className="font-semibold text-gray-900 text-sm">
+                    {user.course} - {user.section}
+                  </p>
+                </div>
+                
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-xs font-medium text-gray-700 mb-1">Year Level</p>
+                  <p className="font-semibold text-gray-900 text-sm">
+                    {user.yearLevel ? `Year ${user.yearLevel}` : 'N/A'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Ballot ID Section */}
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <div className="flex items-start space-x-2">
+                  <Hash className="w-4 h-4 text-blue-800 mt-1 flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-gray-700 mb-1">Ballot ID</p>
+                    <p className="font-mono text-xs text-gray-900 break-all bg-gray-50 rounded px-2 py-1">
+                      {formatBallotId(ballotId)}
+                    </p>
+                    <p className="text-xs text-gray-600 mt-2">
+                      This unique ID will be recorded on the blockchain
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons Card */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6">
+              <div className="space-y-4">
+                <div className="text-center">
+                  <div className="bg-gray-100 rounded-full px-4 py-2 inline-block">
+                    <p className="text-sm font-semibold text-gray-800">
+                      {positions.length} position{positions.length !== 1 ? 's' : ''} selected
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex flex-col space-y-3">
+                  <button
+                    onClick={handleConfirm}
+                    disabled={loading || !ballotId}
+                    className="w-full bg-blue-800 hover:bg-blue-900 disabled:bg-gray-400 text-white py-3 px-4 rounded-xl font-semibold text-sm sm:text-base transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg"
+                  >
+                    {loading ? (
+                      <LoadingSpinner size="sm" color="white" />
+                    ) : (
+                      <>
+                        <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <span>Confirm & Submit Vote</span>
+                      </>
+                    )}
+                  </button>
+                  
+                  <button
+                    onClick={onBack}
+                    disabled={loading}
+                    className="w-full bg-white border border-gray-300 hover:bg-gray-50 disabled:bg-gray-100 disabled:border-gray-300 text-gray-700 hover:text-gray-800 py-3 px-4 rounded-xl font-semibold text-sm sm:text-base transition-all duration-200 flex items-center justify-center space-x-2"
+                  >
+                    <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-blue-800" />
+                    <span>Back to Voting</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Important Notice - Mobile Only */}
+            <div className="lg:hidden bg-gray-50 border border-gray-200 rounded-2xl p-4">
+              <div className="flex items-start space-x-3">
+                <ShieldCheck className="w-5 h-5 text-blue-800 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h4 className="font-semibold text-gray-800 text-sm">Important Notice</h4>
+                  <ul className="text-gray-700 text-xs mt-1 space-y-1">
+                    <li>• Vote cannot be changed after submission</li>
+                    <li>• Your vote is anonymous and encrypted</li>
+                    <li>• Ballot ID recorded on blockchain</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column - Selected Candidates */}
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+            {/* Selected Candidates Card */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4 sm:mb-6 flex items-center">
+                <CheckCircle className="w-5 h-5 mr-2 text-blue-800" />
+                Your Selections
+              </h2>
+              
+              <div className="space-y-4 sm:space-y-6">
+                {positions.map((position) => {
+                  const candidate = getSelectedCandidate(position);
+                  return (
+                    <div key={position} className="border border-gray-200 rounded-xl p-4 bg-white hover:bg-gray-50 transition-colors duration-200">
+                      <h3 className="font-semibold text-gray-900 mb-3 text-base sm:text-lg bg-gray-100 rounded-lg px-3 py-2">
+                        {position}
+                      </h3>
+                      {candidate ? (
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 p-3 bg-white rounded-lg border border-gray-200">
+                          <div className="flex items-center space-x-3 w-full sm:w-auto">
+                            <img
+                              src={candidate.image_url || '/default-avatar.png'}
+                              alt={candidate.name}
+                              className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover flex-shrink-0 border-2 border-gray-300"
+                              onError={handleImageError}
+                            />
+                            <div className="min-w-0 flex-1 sm:hidden">
+                              <h4 className="font-semibold text-gray-900 text-sm truncate">
+                                {candidate.name}
+                              </h4>
+                              <p className="text-gray-600 text-xs truncate">
+                                {candidate.party}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex-1 min-w-0 w-full">
+                            <div className="hidden sm:block">
+                              <h4 className="font-semibold text-gray-900 text-lg">
+                                {candidate.name}
+                              </h4>
+                              <p className="text-gray-600">{candidate.party}</p>
+                            </div>
+                            {candidate.manifesto && (
+                              <p className="text-sm text-gray-700 mt-2 line-clamp-2 bg-gray-50 rounded-lg px-3 py-2">
+                                {candidate.manifesto}
+                              </p>
+                            )}
+                          </div>
+                          
+                          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-800 rounded-full flex items-center justify-center flex-shrink-0">
+                            <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-red-500 bg-red-50 p-3 rounded-lg text-sm border border-red-200">
+                          No candidate selected for this position
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Important Notice - Desktop Only */}
+            <div className="hidden lg:block bg-gray-50 border border-gray-200 rounded-2xl p-6">
+              <div className="flex items-start space-x-4">
+                <ShieldCheck className="w-6 h-6 text-blue-800 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h4 className="font-semibold text-gray-800 text-lg mb-3">Important Notice</h4>
+                  <ul className="text-gray-700 text-sm space-y-2">
+                    <li className="flex items-start space-x-2">
+                      <ShieldCheck className="w-4 h-4 text-blue-800 mt-0.5 flex-shrink-0" />
+                      <span>Once submitted, your vote cannot be changed or revoked</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <ShieldCheck className="w-4 h-4 text-blue-800 mt-0.5 flex-shrink-0" />
+                      <span>Your vote is anonymous and securely encrypted</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <ShieldCheck className="w-4 h-4 text-blue-800 mt-0.5 flex-shrink-0" />
+                      <span>Your ballot ID will be permanently recorded on the blockchain</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <ShieldCheck className="w-4 h-4 text-blue-800 mt-0.5 flex-shrink-0" />
+                      <span>Verify all selections are correct before confirming</span>
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Bottom Action Bar - Mobile Only */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg">
+          <div className="flex space-x-3">
+            <button
+              onClick={onBack}
+              disabled={loading}
+              className="flex-1 bg-white border border-gray-300 hover:bg-gray-50 disabled:bg-gray-100 disabled:border-gray-300 text-gray-700 py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center justify-center space-x-2"
+            >
+              <ArrowLeft className="w-4 h-4 text-blue-800" />
+              <span>Back</span>
+            </button>
+            
+            <button
+              onClick={handleConfirm}
+              disabled={loading || !ballotId}
+              className="flex-1 bg-blue-800 hover:bg-blue-900 disabled:bg-gray-400 text-white py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center justify-center space-x-2"
+            >
+              {loading ? (
+                <LoadingSpinner size="sm" color="white" />
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4" />
+                  <span>Submit</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Add padding to account for fixed bottom bar on mobile */}
+        <div className="lg:hidden h-20"></div>
       </div>
     </div>
   );
