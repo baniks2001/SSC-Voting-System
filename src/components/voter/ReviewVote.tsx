@@ -8,7 +8,7 @@ interface ReviewVoteProps {
   selectedVotes: { [position: string]: number };
   candidates: Candidate[];
   onBack: () => void;
-  onConfirm: (votes: any[], ballotId: string) => void;
+  onConfirm: (votes: any[], ballotId: string, hashedBallotId: string) => void;
   loading?: boolean;
 }
 
@@ -21,41 +21,50 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
 }) => {
   const { user } = useAuth();
   const [ballotId, setBallotId] = useState<string>('');
+  const [hashedBallotId, setHashedBallotId] = useState<string>('');
 
-  // Generate secure ballot ID using Web Crypto API
-  const generateBallotId = useCallback(async (): Promise<string> => {
+  // Generate secure ballot ID and its hash using Web Crypto API
+  const generateSecureBallotId = useCallback(async (): Promise<{ ballotId: string; hashedBallotId: string }> => {
     if (!user) {
       throw new Error('User not authenticated');
     }
 
     const timestamp = Date.now().toString();
-    const randomSalt = Math.random().toString(36).substring(2, 15);
+    const randomSalt = crypto.getRandomValues(new Uint32Array(1))[0].toString(36);
     const voterData = `${user.studentId}-${user.fullName}-${timestamp}-${randomSalt}`;
     
-    // Use Web Crypto API for secure hashing
+    // Generate ballot ID (shorter, readable version)
+    const ballotId = `ballot_${timestamp}_${randomSalt.substring(0, 8)}`;
+    
+    // Generate secure hash of ballot ID for blockchain storage
     const encoder = new TextEncoder();
     const data = encoder.encode(voterData);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    const hashedBallotId = `0x${hashArray.map(b => b.toString(16).padStart(2, '0')).join('')}`;
     
-    return `ballot_${hashHex.substring(0, 16)}_${timestamp}`;
+    return { ballotId, hashedBallotId };
   }, [user]);
 
   // Initialize ballot ID on component mount
   React.useEffect(() => {
     const initBallotId = async () => {
       try {
-        const id = await generateBallotId();
-        setBallotId(id);
+        const { ballotId, hashedBallotId } = await generateSecureBallotId();
+        setBallotId(ballotId);
+        setHashedBallotId(hashedBallotId);
       } catch (error) {
         console.error('Error generating ballot ID:', error);
-        setBallotId('error_generating_id');
+        // Fallback generation
+        const timestamp = Date.now().toString();
+        const randomSalt = Math.random().toString(36).substring(2, 10);
+        setBallotId(`ballot_${timestamp}_${randomSalt}`);
+        setHashedBallotId(`fallback_${timestamp}_${randomSalt}`);
       }
     };
 
     initBallotId();
-  }, [generateBallotId]);
+  }, [generateSecureBallotId]);
 
   // Get candidate details for each selected vote
   const getSelectedCandidate = (position: string) => {
@@ -69,6 +78,10 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
 
   const handleConfirm = async () => {
     try {
+      if (!hashedBallotId) {
+        throw new Error('Ballot ID not properly generated');
+      }
+
       const votes = Object.entries(selectedVotes).map(([position, candidateId]) => {
         const candidate = getSelectedCandidate(position);
         return {
@@ -76,10 +89,11 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
           position,
           candidateName: candidate?.name || 'Unknown Candidate',
           candidateParty: candidate?.party || 'No Party',
-          ballotId
+          ballotId: hashedBallotId // Use hashed version for security
         };
       });
-      onConfirm(votes, ballotId);
+      
+      onConfirm(votes, ballotId, hashedBallotId);
     } catch (error) {
       console.error('Error preparing vote:', error);
       alert('Error preparing your vote. Please try again.');
@@ -93,6 +107,14 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
       return `${id.substring(0, 6)}...${id.substring(id.length - 6)}`;
     }
     return `${id.substring(0, 8)}...${id.substring(id.length - 8)}`;
+  };
+
+  const formatHashedBallotId = (hash: string) => {
+    if (!hash) return 'N/A';
+    if (hash.startsWith('0x')) {
+      return `${hash.substring(0, 10)}...${hash.substring(hash.length - 8)}`;
+    }
+    return formatBallotId(hash);
   };
 
   const positions = Object.keys(selectedVotes);
@@ -177,16 +199,28 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
 
               {/* Ballot ID Section */}
               <div className="mt-6 pt-4 border-t border-gray-200">
-                <div className="flex items-start space-x-2">
-                  <Hash className="w-4 h-4 text-blue-800 mt-1 flex-shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium text-gray-700 mb-1">Ballot ID</p>
-                    <p className="font-mono text-xs text-gray-900 break-all bg-gray-50 rounded px-2 py-1">
-                      {formatBallotId(ballotId)}
-                    </p>
-                    <p className="text-xs text-gray-600 mt-2">
-                      This unique ID will be recorded on the blockchain
-                    </p>
+                <div className="space-y-3">
+                  <div className="flex items-start space-x-2">
+                    <Hash className="w-4 h-4 text-blue-800 mt-1 flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-gray-700 mb-1">Ballot ID (Readable)</p>
+                      <p className="font-mono text-xs text-gray-900 break-all bg-gray-50 rounded px-2 py-1">
+                        {formatBallotId(ballotId)}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start space-x-2">
+                    <ShieldCheck className="w-4 h-4 text-green-600 mt-1 flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-gray-700 mb-1">Secure Hash (Blockchain)</p>
+                      <p className="font-mono text-xs text-gray-900 break-all bg-green-50 rounded px-2 py-1">
+                        {formatHashedBallotId(hashedBallotId)}
+                      </p>
+                      <p className="text-xs text-gray-600 mt-1">
+                        This secure hash will be recorded on the blockchain
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -206,7 +240,7 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
                 <div className="flex flex-col space-y-3">
                   <button
                     onClick={handleConfirm}
-                    disabled={loading || !ballotId}
+                    disabled={loading || !ballotId || !hashedBallotId}
                     className="w-full bg-blue-800 hover:bg-blue-900 disabled:bg-gray-400 text-white py-3 px-4 rounded-xl font-semibold text-sm sm:text-base transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg"
                   >
                     {loading ? (
@@ -236,11 +270,12 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
               <div className="flex items-start space-x-3">
                 <ShieldCheck className="w-5 h-5 text-blue-800 mt-0.5 flex-shrink-0" />
                 <div>
-                  <h4 className="font-semibold text-gray-800 text-sm">Important Notice</h4>
+                  <h4 className="font-semibold text-gray-800 text-sm">Security Features</h4>
                   <ul className="text-gray-700 text-xs mt-1 space-y-1">
-                    <li>• Vote cannot be changed after submission</li>
-                    <li>• Your vote is anonymous and encrypted</li>
-                    <li>• Ballot ID recorded on blockchain</li>
+                    <li>• Secure SHA-256 hashing</li>
+                    <li>• Blockchain immutability</li>
+                    <li>• Anonymous voting</li>
+                    <li>• Cryptographic proof</li>
                   </ul>
                 </div>
               </div>
@@ -312,28 +347,28 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
               </div>
             </div>
 
-            {/* Important Notice - Desktop Only */}
+            {/* Security Notice - Desktop Only */}
             <div className="hidden lg:block bg-gray-50 border border-gray-200 rounded-2xl p-6">
               <div className="flex items-start space-x-4">
                 <ShieldCheck className="w-6 h-6 text-blue-800 mt-0.5 flex-shrink-0" />
                 <div>
-                  <h4 className="font-semibold text-gray-800 text-lg mb-3">Important Notice</h4>
+                  <h4 className="font-semibold text-gray-800 text-lg mb-3">Security Features</h4>
                   <ul className="text-gray-700 text-sm space-y-2">
                     <li className="flex items-start space-x-2">
-                      <ShieldCheck className="w-4 h-4 text-blue-800 mt-0.5 flex-shrink-0" />
-                      <span>Once submitted, your vote cannot be changed or revoked</span>
+                      <ShieldCheck className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                      <span><strong>SHA-256 Hashing:</strong> Your ballot ID is securely hashed before blockchain storage</span>
                     </li>
                     <li className="flex items-start space-x-2">
-                      <ShieldCheck className="w-4 h-4 text-blue-800 mt-0.5 flex-shrink-0" />
-                      <span>Your vote is anonymous and securely encrypted</span>
+                      <ShieldCheck className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                      <span><strong>Blockchain Immutability:</strong> Votes cannot be altered once recorded</span>
                     </li>
                     <li className="flex items-start space-x-2">
-                      <ShieldCheck className="w-4 h-4 text-blue-800 mt-0.5 flex-shrink-0" />
-                      <span>Your ballot ID will be permanently recorded on the blockchain</span>
+                      <ShieldCheck className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                      <span><strong>Anonymous Voting:</strong> Personal information is never stored on-chain</span>
                     </li>
                     <li className="flex items-start space-x-2">
-                      <ShieldCheck className="w-4 h-4 text-blue-800 mt-0.5 flex-shrink-0" />
-                      <span>Verify all selections are correct before confirming</span>
+                      <ShieldCheck className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                      <span><strong>Cryptographic Proof:</strong> Receipt provides verifiable proof of voting</span>
                     </li>
                   </ul>
                 </div>
@@ -356,7 +391,7 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
             
             <button
               onClick={handleConfirm}
-              disabled={loading || !ballotId}
+              disabled={loading || !ballotId || !hashedBallotId}
               className="flex-1 bg-blue-800 hover:bg-blue-900 disabled:bg-gray-400 text-white py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center justify-center space-x-2"
             >
               {loading ? (

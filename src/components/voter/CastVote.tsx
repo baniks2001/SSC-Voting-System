@@ -9,7 +9,7 @@ import { ReviewVote } from './ReviewVote';
 interface CastVoteProps {
   onVoteCast: (receipt: any) => void;
   onShowReceipt: (votes: any[]) => void;
-  onLogout: () => void; // This will navigate back to App.tsx
+  onLogout: () => void;
 }
 
 export const CastVote: React.FC<CastVoteProps> = ({ onVoteCast, onShowReceipt, onLogout }) => {
@@ -81,7 +81,7 @@ export const CastVote: React.FC<CastVoteProps> = ({ onVoteCast, onShowReceipt, o
   };
 
   const confirmLogout = () => {
-    // This will trigger the parent component to navigate back to App.tsx
+    // Call the logout function passed from parent
     onLogout();
     setShowLogoutConfirm(false);
   };
@@ -267,7 +267,7 @@ export const CastVote: React.FC<CastVoteProps> = ({ onVoteCast, onShowReceipt, o
               <div className="flex space-x-3">
                 <button
                   onClick={cancelLogout}
-                  className="flex-1 btn-secondary py-2"
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 py-2 px-4 rounded-lg transition-all duration-200 font-medium"
                 >
                   Cancel
                 </button>

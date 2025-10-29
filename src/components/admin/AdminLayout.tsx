@@ -1,4 +1,3 @@
-// components/admin/AdminLayout.tsx
 import React, { useState, ReactNode, useEffect } from 'react';
 import { 
   LayoutDashboard, 
@@ -27,16 +26,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, logout, isPollMonitor } = useAuth();
 
-  // Define navigation items based on user role
   const getNavItems = () => {
-    // Poll Monitors can only see Poll Monitor tab
     if (isPollMonitor) {
       return [
         { id: 'monitor', label: 'Poll Monitor', icon: Monitor }
       ];
     }
 
-    // Regular admins and super admins see all tabs
     return [
       { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
       ...(user?.isSuperAdmin ? [
@@ -50,14 +46,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
   const navItems = getNavItems();
 
-  // If poll monitor tries to access restricted tabs, redirect to monitor
   useEffect(() => {
     if (isPollMonitor && activeTab !== 'monitor') {
       onTabChange('monitor');
     }
   }, [isPollMonitor, activeTab, onTabChange]);
 
-  // Set default tab for poll monitors
   useEffect(() => {
     if (isPollMonitor && activeTab !== 'monitor') {
       onTabChange('monitor');

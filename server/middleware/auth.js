@@ -1,78 +1,121 @@
-// middleware/auth.js
-import jwt from 'jsonwebtoken';
+// middleware/auth.js - Modified for local network (no authentication)
 import { pool } from '../config/database.js';
 
-export const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+// Mock user data for local development
+const createLocalUser = (type = 'voter') => {
+  const baseUser = {
+    id: 1,
+    email: 'localuser@ssc.local',
+    name: 'Local Development User',
+    type: type,
+    role: type === 'admin' ? 'admin' : 'voter'
+  };
 
-  if (!token) {
-    return res.status(401).json({ error: 'Access token required' });
+  // For admin routes, add admin-specific properties
+  if (type === 'admin') {
+    return {
+      ...baseUser,
+      role: 'admin',
+      is_active: true
+    };
   }
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ error: 'Invalid or expired token' });
-    }
-    req.user = user;
-    next();
-  });
+  return baseUser;
+};
+
+export const authenticateToken = (req, res, next) => {
+  // Local network - automatically create authenticated user
+  console.log('Local network access - authentication bypassed');
+  
+  // Check if admin route to determine user type
+  const isAdminRoute = req.originalUrl.includes('/admin') || 
+                       req.originalUrl.includes('/super-admin');
+  
+  const userType = isAdminRoute ? 'admin' : 'voter';
+  req.user = createLocalUser(userType);
+  
+  next();
 };
 
 export const authenticateAdmin = async (req, res, next) => {
   try {
-    // First verify the token
-    authenticateToken(req, res, async () => {
-      if (req.user.type !== 'admin') {
-        return res.status(403).json({ error: 'Admin access required' });
-      }
-
-      // For super admin (id: 0)
-      if (req.user.id === 0 && req.user.role === 'super_admin') {
-        return next();
-      }
-
-      // For regular admins, verify they exist and are active
-      const [admins] = await pool.execute(
-        'SELECT id, email, role, is_active FROM admins WHERE id = ? AND is_active = true',
-        [req.user.id]
-      );
-
-      if (admins.length === 0) {
-        return res.status(401).json({ error: 'Admin account not found or inactive' });
-      }
-
-      req.admin = admins[0];
-      next();
-    });
+    console.log('Local network - admin authentication bypassed');
+    
+    // Create mock admin user
+    req.user = createLocalUser('admin');
+    req.admin = {
+      id: 1,
+      email: 'admin@ssc.local',
+      role: 'admin',
+      is_active: true
+    };
+    
+    next();
   } catch (error) {
-    console.error('Admin auth error:', error);
+    console.error('Local admin auth error:', error);
     res.status(500).json({ error: 'Authentication error' });
   }
 };
 
 export const authenticateSuperAdmin = (req, res, next) => {
-  // Check if user is super admin (either from token or from database)
-  const isSuperAdmin = req.user.role === 'super_admin' || 
-                      (req.user.id === 0 && req.user.type === 'admin') ||
-                      (req.admin && req.admin.role === 'super_admin');
-
-  if (!isSuperAdmin) {
-    return res.status(403).json({ error: 'Super admin access required' });
-  }
+  console.log('Local network - super admin authentication bypassed');
+  
+  // Create mock super admin user
+  req.user = {
+    id: 0,
+    email: 'superadmin@ssc.local',
+    name: 'Local Super Admin',
+    type: 'admin',
+    role: 'super_admin'
+  };
+  
+  req.admin = {
+    id: 0,
+    email: 'superadmin@ssc.local',
+    role: 'super_admin',
+    is_active: true
+  };
   
   next();
 };
 
 export const authenticateVoter = async (req, res, next) => {
   try {
-    authenticateToken(req, res, async () => {
-      if (req.user.type !== 'voter') {
-        return res.status(403).json({ error: 'Voter access required' });
-      }
-      next();
-    });
+    console.log('Local network - voter authentication bypassed');
+    
+    // Create mock voter user
+    req.user = createLocalUser('voter');
+    
+    next();
   } catch (error) {
+    console.error('Local voter auth error:', error);
     res.status(500).json({ error: 'Authentication error' });
   }
+};
+
+// Additional helper for development
+export const simulateUserSwitch = (req, res, next) => {
+  // This middleware allows simulating different users during development
+  const userType = req.headers['x-user-type'] || 'voter'; // Use header to simulate different users
+  const userId = req.headers['x-user-id'] || (userType === 'admin' ? 1 : 1);
+  
+  req.user = {
+    id: parseInt(userId),
+    email: `${userType}${userId}@ssc.local`,
+    name: `Local ${userType} ${userId}`,
+    type: userType,
+    role: userType
+  };
+  
+  if (userType === 'admin') {
+    req.admin = {
+      id: parseInt(userId),
+      email: `${userType}${userId}@ssc.local`,
+      role: userId === '0' ? 'super_admin' : 'admin',
+      is_active: true
+    };
+  }
+  
+  console.log(`Simulating user: ${userType} ID: ${userId}`);
+  next();
 };

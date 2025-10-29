@@ -46,10 +46,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setLoading(false);
   }, []);
 
+
   const login = async (emailOrStudentId: string, password: string, isAdmin = false) => {
     try {
       const endpoint = isAdmin ? '/auth/admin/login' : '/auth/voter/login';
-      const payload = isAdmin 
+      const payload = isAdmin
         ? { email: emailOrStudentId, password }
         : { studentId: emailOrStudentId, password };
 
@@ -63,10 +64,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // In your AuthContext, make sure you have a logout function like this:
   const logout = () => {
+    // Clear token from localStorage
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+
+    // Reset auth state
     setUser(null);
+    setLoading(false);
   };
 
   // Check if current user is a poll monitor

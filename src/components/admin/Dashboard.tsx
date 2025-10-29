@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Vote, UserCheck, Activity, Download } from 'lucide-react';
+import { Users, Vote, UserCheck, Activity, Download, Cpu } from 'lucide-react';
 import { DashboardStats, AuditLog } from '../../types';
 import { api } from '../../utils/api';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 
 export const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [blockchainInfo, setBlockchainInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
 
@@ -15,8 +16,13 @@ export const Dashboard: React.FC = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const response = await api.get('/admin/dashboard');
-      setStats(response);
+      const [dashboardResponse, blockchainResponse] = await Promise.all([
+        api.get('/admin/dashboard'),
+        api.get('/voting/blockchain-status').catch(() => null) // Fixed endpoint
+      ]);
+
+      setStats(dashboardResponse);
+      setBlockchainInfo(blockchainResponse);
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
     } finally {
@@ -81,6 +87,12 @@ export const Dashboard: React.FC = () => {
     return (
       <div className="text-center py-8">
         <p className="text-red-600">Failed to load dashboard data</p>
+        <button 
+          onClick={fetchDashboardData}
+          className="mt-4 btn-primary"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -91,6 +103,65 @@ export const Dashboard: React.FC = () => {
         <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
         <p className="text-gray-600">Overview of the voting system</p>
       </div>
+
+      {/* Blockchain Status */}
+      {blockchainInfo && (
+        <div className="card">
+          <div className="card-header">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+              <Cpu className="w-5 h-5 mr-2 text-indigo-600" />
+              Blockchain Network Status
+            </h2>
+          </div>
+          <div className="card-body">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-blue-800 text-sm font-medium">Network Status</p>
+                    <p className={`text-lg font-bold ${blockchainInfo.isConnected ? 'text-green-600' : 'text-red-600'}`}>
+                      {blockchainInfo.isConnected ? 'Connected' : 'Disconnected'}
+                    </p>
+                  </div>
+                  <Cpu className={`w-8 h-8 ${blockchainInfo.isConnected ? 'text-green-500' : 'text-red-500'}`} />
+                </div>
+              </div>
+
+              <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                <div>
+                  <p className="text-purple-800 text-sm font-medium">Connected Nodes</p>
+                  <p className="text-lg font-bold text-purple-600">
+                    {blockchainInfo.connectedNodes || 0}/{blockchainInfo.totalNodes || 0}
+                  </p>
+                </div>
+                <p className="text-xs text-purple-600 mt-1">Active blockchain nodes</p>
+              </div>
+
+              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                <div>
+                  <p className="text-green-800 text-sm font-medium">Current Block</p>
+                  <p className="text-lg font-bold text-green-600">
+                    #{blockchainInfo.blockNumber || 'N/A'}
+                  </p>
+                </div>
+                <p className="text-xs text-green-600 mt-1">Latest block number</p>
+              </div>
+
+              <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                <div>
+                  <p className="text-orange-800 text-sm font-medium">Storage Mode</p>
+                  <p className="text-lg font-bold text-orange-600">
+                    {blockchainInfo.simulationMode ? 'Simulation' : 'Live'}
+                  </p>
+                </div>
+                <p className="text-xs text-orange-600 mt-1">
+                  {blockchainInfo.simulationMode ? 'Test environment' : 'Production'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="responsive-grid">
@@ -109,6 +180,11 @@ export const Dashboard: React.FC = () => {
             <div>
               <p className="text-green-100">Total Votes</p>
               <p className="text-2xl font-bold">{stats.totalVotes}</p>
+              {blockchainInfo && (
+                <p className="text-green-200 text-xs mt-1">
+                  {blockchainInfo.simulationMode ? 'Simulation Mode' : 'On Blockchain'}
+                </p>
+              )}
             </div>
             <UserCheck className="w-8 h-8 text-green-200" />
           </div>
@@ -140,24 +216,24 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* Audit Logs */}
-<div className="card">
-  <div className="card-header flex justify-between items-center">
-    <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
-    <button
-      onClick={exportAuditLogs}
-      disabled={exporting || stats.auditLogs.length === 0}
-      className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-    >
-      {exporting ? (
-        <div className="mr-2">
-          <LoadingSpinner size="sm" />
+      <div className="card">
+        <div className="card-header flex justify-between items-center">
+          <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
+          <button
+            onClick={exportAuditLogs}
+            disabled={exporting || stats.auditLogs.length === 0}
+            className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {exporting ? (
+              <div className="mr-2">
+                <LoadingSpinner size="sm" />
+              </div>
+            ) : (
+              <Download className="w-4 h-4 mr-2" />
+            )}
+            Export CSV
+          </button>
         </div>
-      ) : (
-        <Download className="w-4 h-4 mr-2" />
-      )}
-      Export CSV
-    </button>
-  </div>
         <div className="card-body">
           {stats.auditLogs.length === 0 ? (
             <p className="text-gray-500 text-center py-4">No recent activity</p>

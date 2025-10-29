@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, FileText, Hash, User, Shield, Fingerprint, RefreshCw } from 'lucide-react';
+import { CheckCircle, XCircle, FileText, Hash, User, Shield, Fingerprint, RefreshCw, Lock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../utils/api';
 import { LoadingSpinner } from '../common/LoadingSpinner';
@@ -8,6 +8,7 @@ import { useToast } from '../common/Toast';
 interface VoteReceiptProps {
   votes: any[];
   ballotId: string;
+  hashedBallotId: string;
   onVoteComplete: (receipt: any) => void;
   onBack?: () => void;
 }
@@ -15,6 +16,7 @@ interface VoteReceiptProps {
 export const VoteReceipt: React.FC<VoteReceiptProps> = ({ 
   votes, 
   ballotId,
+  hashedBallotId,
   onVoteComplete, 
   onBack 
 }) => {
@@ -34,18 +36,20 @@ export const VoteReceipt: React.FC<VoteReceiptProps> = ({
 
     try {
       console.log('✅ Starting blockchain submission...');
+      console.log('🔐 Using hashed ballot ID for blockchain:', hashedBallotId);
 
-      // Prepare vote data for blockchain
+      // Prepare vote data for blockchain - use hashed ballot ID for security
       const voteData = {
         voterId: user?.studentId,
         votes: votes,
-        ballotId: ballotId,
+        ballotId: hashedBallotId, // Use the hashed version for blockchain
         timestamp: new Date().toISOString()
       };
 
       console.log('📤 Submitting vote to blockchain:', {
         voterId: user?.studentId,
-        ballotId: ballotId,
+        readableBallotId: ballotId,
+        hashedBallotId: hashedBallotId,
         voteCount: votes.length
       });
 
@@ -59,7 +63,8 @@ export const VoteReceipt: React.FC<VoteReceiptProps> = ({
         showToast('success', 'Vote successfully recorded on blockchain!');
         
         console.log('✅ Blockchain submission successful:', {
-          ballotId: ballotId,
+          readableBallotId: ballotId,
+          hashedBallotId: hashedBallotId,
           transactionHash: response.receipt.transactionHash,
           blockNumber: response.receipt.blockNumber
         });
@@ -89,6 +94,14 @@ export const VoteReceipt: React.FC<VoteReceiptProps> = ({
     return `${hash.substring(0, 8)}...${hash.substring(hash.length - 8)}`;
   };
 
+  const formatHashedBallotId = (hash: string) => {
+    if (!hash) return 'N/A';
+    if (hash.startsWith('0x')) {
+      return `${hash.substring(0, 10)}...${hash.substring(hash.length - 8)}`;
+    }
+    return formatHash(hash);
+  };
+
   if (submitting) {
     return (
       <div className="min-h-screen bg-white py-4 px-3 sm:px-4 lg:px-6">
@@ -97,10 +110,10 @@ export const VoteReceipt: React.FC<VoteReceiptProps> = ({
             <div className="flex flex-col items-center justify-center py-8">
               <LoadingSpinner size="lg" />
               <h2 className="text-xl font-semibold text-gray-900 mt-4">
-                Submitting Vote to Blockchain
+                Securing Your Vote on Blockchain
               </h2>
               <p className="text-gray-600 mt-2">
-                Please wait while your vote is being securely recorded...
+                Please wait while your vote is being cryptographically secured...
               </p>
               
               {/* Progress steps */}
@@ -110,8 +123,12 @@ export const VoteReceipt: React.FC<VoteReceiptProps> = ({
                   <span>Ballot ID: {formatHash(ballotId)}</span>
                 </div>
                 <div className="flex items-center justify-center space-x-2">
+                  <Lock className="w-4 h-4 text-green-600" />
+                  <span>Hashing ballot ID: {formatHashedBallotId(hashedBallotId)}</span>
+                </div>
+                <div className="flex items-center justify-center space-x-2">
                   <Shield className="w-4 h-4 text-blue-800" />
-                  <span>Encrypting your vote</span>
+                  <span>Encrypting vote data</span>
                 </div>
                 <div className="flex items-center justify-center space-x-2">
                   <Hash className="w-4 h-4 text-blue-800" />
@@ -140,9 +157,10 @@ export const VoteReceipt: React.FC<VoteReceiptProps> = ({
                 Submission Failed
               </h2>
               <p className="text-gray-600 mb-4">{error}</p>
-              <p className="text-sm text-gray-500 mb-6">
-                Ballot ID: {formatHash(ballotId)}
-              </p>
+              <div className="text-sm text-gray-500 mb-6 space-y-2">
+                <p>Readable Ballot ID: {formatHash(ballotId)}</p>
+                <p>Secure Hash: {formatHashedBallotId(hashedBallotId)}</p>
+              </div>
 
               <div className="flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4">
                 {onBack && (
@@ -182,7 +200,7 @@ export const VoteReceipt: React.FC<VoteReceiptProps> = ({
             </div>
             <h1 className="text-2xl font-bold text-white">Vote Successfully Cast!</h1>
             <p className="text-blue-100 mt-2">
-              Your vote has been securely recorded on the Ethereum blockchain
+              Your vote has been cryptographically secured on the Ethereum blockchain
             </p>
           </div>
 
@@ -215,9 +233,15 @@ export const VoteReceipt: React.FC<VoteReceiptProps> = ({
               </h2>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-purple-700">Ballot ID:</span>
+                  <span className="text-purple-700">Readable Ballot ID:</span>
                   <span className="font-mono text-sm text-purple-900">
                     {formatHash(ballotId)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-purple-700">Secure Hash (Blockchain):</span>
+                  <span className="font-mono text-sm text-purple-900">
+                    {formatHashedBallotId(hashedBallotId)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -260,6 +284,14 @@ export const VoteReceipt: React.FC<VoteReceiptProps> = ({
                     {new Date(blockchainReceipt.timestamp).toLocaleString()}
                   </span>
                 </div>
+                {blockchainReceipt.node && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-green-700">Blockchain Node:</span>
+                    <span className="text-green-900 font-medium">
+                      {blockchainReceipt.node}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -288,11 +320,11 @@ export const VoteReceipt: React.FC<VoteReceiptProps> = ({
               <div className="flex items-start space-x-3">
                 <Shield className="w-5 h-5 text-blue-800 mt-0.5 flex-shrink-0" />
                 <div className="text-sm">
-                  <h4 className="font-semibold text-blue-800">Your Vote is Secure</h4>
+                  <h4 className="font-semibold text-blue-800">Cryptographic Security</h4>
                   <p className="text-blue-700 mt-1">
-                    This receipt proves your vote was recorded on the Ethereum blockchain. 
-                    The ballot ID and transaction hash serve as cryptographic proof that cannot be altered.
-                    Your identity is protected through cryptographic hashing.
+                    Your vote is secured with SHA-256 hashing and recorded on the immutable Ethereum blockchain. 
+                    The secure hash protects your identity while providing verifiable proof of voting.
+                    The transaction hash serves as cryptographic evidence that cannot be altered.
                   </p>
                 </div>
               </div>

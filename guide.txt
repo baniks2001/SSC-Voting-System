@@ -1,0 +1,31 @@
+install node.js first before doing this guide
+
+
+Guide:
+new terminal
+npm install
+
+
+for the server
+    cd server
+    npm install
+
+
+create .env and paste the environmental.txt in the .env
+
+node 1 start
+    cd Blockchain
+    ./start-node1.sh
+
+For node 2 start up
+    cd blockchain
+    geth --datadir node2 --networkid 1337 --port 30304 --http --http.port 8547 --http.addr 0.0.0.0 --http.corsdomain "*" --http.api "web3,eth,net,personal,admin" --ipcdisable --authrpc.port 8552 console
+
+to run the system
+new terminal
+    npm run dev
+
+to run the server
+new terminal
+    cd server
+        npm run dev

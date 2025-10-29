@@ -284,7 +284,6 @@ const generatePassword = () => {
     }, 200);
     return interval;
   };
-
 // In your VoterManagement.tsx - update the handleExport function
 const handleExport = async () => {
   try {
@@ -306,16 +305,16 @@ const handleExport = async () => {
 
     const params = new URLSearchParams();
 
-    // Add selected fields to params - FIXED: use correct parameter name
+    // Add selected fields to params
     selectedOptions.forEach(field => {
-      params.append('include[]', field);
+      params.append('fields[]', field);
     });
     console.log('✅ Added export fields:', selectedOptions);
 
     // Add selected student IDs if any are selected
     if (selectedStudents.length > 0) {
       selectedStudents.forEach(id => {
-        params.append('studentIds', id.toString());
+        params.append('studentIds[]', id.toString());
       });
       console.log('✅ Added student IDs:', selectedStudents);
     }
@@ -323,7 +322,7 @@ const handleExport = async () => {
     // Use course filters if no specific students selected
     if (selectedStudents.length === 0 && selectedExportCourses.length > 0) {
       selectedExportCourses.forEach(course => {
-        params.append('courses', course);
+        params.append('courses[]', course);
       });
       console.log('✅ Added course filters:', selectedExportCourses);
     }
@@ -347,44 +346,62 @@ const handleExport = async () => {
       }
     }
 
-    // Request password generation
+    // CRITICAL: Request password decryption
     if (exportOptions.password) {
+      params.append('includePasswords', 'true');
       params.append('decryptPasswords', 'true');
+      console.log('🔑 Password decryption requested');
     }
 
     const apiUrl = `/voters/export?${params.toString()}`;
     console.log('🌐 API URL:', apiUrl);
 
-    const response = await api.get(apiUrl);
-    console.log('📨 API Response:', response);
+    // Make the API request with proper error handling
+    const response = await api.get(apiUrl, {
+      timeout: 30000, // 30 second timeout for large exports
+    });
+    
+    console.log('📨 API Response received:', response);
 
     clearInterval(progressInterval);
     setExportProgress(100);
 
-    // Handle response
+    // Handle response - ensure we're getting the actual data
     let exportData = response;
     
+    // Handle different response structures
     if (response && typeof response === 'object') {
+      // If response has success property and it's false
       if (response.success === false) {
         throw new Error(response.error || 'Export failed');
       }
       
+      // If response has data property, use that
       if (response.data !== undefined) {
         exportData = response.data;
       }
+      
+      // If response has voters property (common in some APIs)
+      if (response.voters !== undefined) {
+        exportData = response.voters;
+      }
     }
 
-    if (!exportData || exportData.length === 0) {
+    if (!exportData || (Array.isArray(exportData) && exportData.length === 0)) {
       showToast('warning', 'No data found for the selected filters');
       setExporting(false);
       setExportProgress(0);
       return;
     }
 
-    console.log('📊 Data to export:', exportData[0]); // Log first record
+    // Ensure exportData is an array
+    const dataArray = Array.isArray(exportData) ? exportData : [exportData];
+    
+    console.log('📊 Data to export - first record:', dataArray[0]);
+    console.log('🔑 Password field in data:', dataArray[0]?.password);
 
-    // Convert to CSV
-    const csvContent = convertToCSV(exportData);
+    // Convert to CSV with proper password handling
+    const csvContent = convertToCSV(dataArray);
     const filename = `voters_export_${new Date().toISOString().split('T')[0]}.csv`;
 
     downloadCSV(csvContent, filename);
@@ -395,18 +412,25 @@ const handleExport = async () => {
       setExportProgress(0);
       setSelectedStudents([]);
       setStudentSearch('');
-      showToast('success', `Exported ${exportData.length} record(s) successfully`);
+      showToast('success', `Exported ${dataArray.length} record(s) successfully`);
     }, 500);
 
   } catch (error: any) {
     console.error('❌ Export error:', error);
     setExporting(false);
     setExportProgress(0);
-    showToast('error', error.message || 'Failed to export data');
+    
+    if (error.response?.status === 403) {
+      showToast('error', 'Permission denied: You are not allowed to export passwords');
+    } else if (error.code === 'ECONNABORTED') {
+      showToast('error', 'Export timeout: The operation took too long. Try exporting fewer records.');
+    } else {
+      showToast('error', error.message || 'Failed to export data');
+    }
   }
 };
 
-  // Update your convertToCSV function to handle the new data structure
+// Update your convertToCSV function to ensure passwords are included
 const convertToCSV = (data: any[]) => {
   if (data.length === 0) return '';
 
@@ -414,10 +438,18 @@ const convertToCSV = (data: any[]) => {
   const firstItem = data[0];
   if (!firstItem) return '';
   
+  // Ensure password field is included if it exists in any record
   const keys = Object.keys(firstItem);
-  if (keys.length === 0) return '';
+  
+  // If any record has a password field, make sure it's included in all records
+  const hasPasswordField = data.some(item => item.password !== undefined);
+  
+  if (hasPasswordField && !keys.includes('password')) {
+    keys.push('password');
+  }
 
   console.log('📋 CSV keys found:', keys);
+  console.log('🔑 Password in keys:', keys.includes('password'));
 
   // Map database keys to friendly headers
   const headerMap: { [key: string]: string } = {
@@ -436,36 +468,58 @@ const convertToCSV = (data: any[]) => {
 
   const csvRows = [
     headers.join(','),
-    ...data.map(row =>
-      keys.map(key => {
+    ...data.map(row => {
+      return keys.map(key => {
         let value = row[key] || '';
         
+        // Handle null/undefined values
+        if (value === null || value === undefined) {
+          value = '';
+        }
+        
+        // Convert boolean values to readable text
+        if (key === 'has_voted') {
+          value = value ? 'Voted' : 'Not Voted';
+        }
+        
+        // Format dates if needed
+        if ((key === 'voted_at' || key === 'created_at') && value) {
+          try {
+            value = new Date(value).toLocaleString();
+          } catch (e) {
+            // Keep original value if date parsing fails
+          }
+        }
+
         // Handle values that might contain commas or special characters
         if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
           value = value.replace(/"/g, '""'); // Escape double quotes
           return `"${value}"`;
         }
         
-        return value;
-      }).join(',')
-    )
+        return String(value);
+      }).join(',');
+    })
   ];
 
   console.log('📄 CSV content preview:', csvRows.slice(0, 2).join('\n'));
   return csvRows.join('\n');
 };
 
-  const downloadCSV = (content: string, filename: string) => {
-    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-  };
+// Also update the downloadCSV function to handle encoding properly
+const downloadCSV = (content: string, filename: string) => {
+  // Add BOM for UTF-8 to handle special characters in Excel
+  const BOM = '\uFEFF';
+  const blob = new Blob([BOM + content], { type: 'text/csv;charset=utf-8;' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+};
 
   const resetForm = () => {
     setFormData({

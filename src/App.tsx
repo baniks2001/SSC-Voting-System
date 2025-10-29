@@ -15,7 +15,7 @@ import './styles/globals.css';
 import './styles/components.css';
 
 function AppContent() {
-  const { user, isAuthenticated, loading } = useAuth();
+  const { user, isAuthenticated, loading, logout } = useAuth(); // Add logout from context
   const { showToast } = useToast();
   
   // Auth state
@@ -37,6 +37,12 @@ function AppContent() {
       setShowAdminLogin(true);
     }
   }, []);
+
+  // Handle logout from CastVote component
+  const handleLogout = () => {
+    logout();
+    showToast('success', 'Successfully logged out');
+  };
 
   // Handle when user confirms vote in ReviewVote
   const handleShowReceipt = (votes: any[]) => {
@@ -101,6 +107,7 @@ function AppContent() {
       <AdminLayout 
         activeTab={activeAdminTab} 
         onTabChange={setActiveAdminTab}
+        onLogout={handleLogout} // Pass logout to AdminLayout
       >
         {activeAdminTab === 'dashboard' && <Dashboard />}
         {activeAdminTab === 'admins' && (
@@ -161,6 +168,7 @@ function AppContent() {
       <CastVote 
         onVoteCast={handleVoteCast}
         onShowReceipt={handleShowReceipt}
+        onLogout={handleLogout} // Pass logout handler to CastVote
       />
     </div>
   );
