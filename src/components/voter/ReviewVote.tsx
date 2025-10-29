@@ -3,6 +3,7 @@ import { User, School, Calendar, ArrowLeft, ShieldCheck, Hash, CheckCircle } fro
 import { Candidate } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import { LoadingSpinner } from '../common/LoadingSpinner';
+import { api } from '../../utils/api'; // Add this import
 
 interface ReviewVoteProps {
   selectedVotes: { [position: string]: number };
@@ -22,6 +23,7 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
   const { user } = useAuth();
   const [ballotId, setBallotId] = useState<string>('');
   const [hashedBallotId, setHashedBallotId] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false); // Add local loading state
 
   // Generate secure ballot ID and its hash using Web Crypto API
   const generateSecureBallotId = useCallback(async (): Promise<{ ballotId: string; hashedBallotId: string }> => {
@@ -82,6 +84,26 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
         throw new Error('Ballot ID not properly generated');
       }
 
+      setIsSubmitting(true);
+
+      // First, mark the voter as voted in the SQL database
+      try {
+        console.log('🔄 Marking voter as voted in SQL database...');
+        const markVotedResponse = await api.post('/voting/mark-voted', {
+          studentId: user?.studentId
+        });
+
+        if (!markVotedResponse.success) {
+          throw new Error(markVotedResponse.error || 'Failed to update voter status');
+        }
+        
+        console.log('✅ Voter marked as voted in SQL database');
+      } catch (error) {
+        console.error('❌ Failed to mark voter as voted:', error);
+        throw new Error('Failed to update your voting status. Please try again.');
+      }
+
+      // Then prepare and submit the votes
       const votes = Object.entries(selectedVotes).map(([position, candidateId]) => {
         const candidate = getSelectedCandidate(position);
         return {
@@ -93,10 +115,13 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
         };
       });
       
+      console.log('✅ Votes prepared, calling onConfirm...');
       onConfirm(votes, ballotId, hashedBallotId);
+      
     } catch (error) {
       console.error('Error preparing vote:', error);
-      alert('Error preparing your vote. Please try again.');
+      alert(error.message || 'Error preparing your vote. Please try again.');
+      setIsSubmitting(false);
     }
   };
 
@@ -118,6 +143,7 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
   };
 
   const positions = Object.keys(selectedVotes);
+  const isConfirmDisabled = loading || isSubmitting || !ballotId || !hashedBallotId;
 
   if (!user) {
     return (
@@ -240,10 +266,10 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
                 <div className="flex flex-col space-y-3">
                   <button
                     onClick={handleConfirm}
-                    disabled={loading || !ballotId || !hashedBallotId}
+                    disabled={isConfirmDisabled}
                     className="w-full bg-blue-800 hover:bg-blue-900 disabled:bg-gray-400 text-white py-3 px-4 rounded-xl font-semibold text-sm sm:text-base transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg"
                   >
-                    {loading ? (
+                    {(loading || isSubmitting) ? (
                       <LoadingSpinner size="sm" color="white" />
                     ) : (
                       <>
@@ -255,7 +281,7 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
                   
                   <button
                     onClick={onBack}
-                    disabled={loading}
+                    disabled={loading || isSubmitting}
                     className="w-full bg-white border border-gray-300 hover:bg-gray-50 disabled:bg-gray-100 disabled:border-gray-300 text-gray-700 hover:text-gray-800 py-3 px-4 rounded-xl font-semibold text-sm sm:text-base transition-all duration-200 flex items-center justify-center space-x-2"
                   >
                     <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-blue-800" />
@@ -382,7 +408,7 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
           <div className="flex space-x-3">
             <button
               onClick={onBack}
-              disabled={loading}
+              disabled={loading || isSubmitting}
               className="flex-1 bg-white border border-gray-300 hover:bg-gray-50 disabled:bg-gray-100 disabled:border-gray-300 text-gray-700 py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center justify-center space-x-2"
             >
               <ArrowLeft className="w-4 h-4 text-blue-800" />
@@ -391,10 +417,10 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
             
             <button
               onClick={handleConfirm}
-              disabled={loading || !ballotId || !hashedBallotId}
+              disabled={isConfirmDisabled}
               className="flex-1 bg-blue-800 hover:bg-blue-900 disabled:bg-gray-400 text-white py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center justify-center space-x-2"
             >
-              {loading ? (
+              {(loading || isSubmitting) ? (
                 <LoadingSpinner size="sm" color="white" />
               ) : (
                 <>

@@ -98,8 +98,10 @@ export const CandidateManagement: React.FC = () => {
       'President': 'badge-purple',
       'Vice President': 'badge-indigo',
       'Secretary': 'badge-green',
+      'Senator': 'badge-blue',
       'Treasurer': 'badge-warning',
       'Auditor': 'badge-primary'
+      
     };
     return colors[position as keyof typeof colors] || 'badge-gray';
   };
@@ -254,6 +256,7 @@ export const CandidateManagement: React.FC = () => {
               <option value="President">President</option>
               <option value="Vice President">Vice President</option>
               <option value="Secretary">Secretary</option>
+              <option value="Senator">Secretary</option>
               <option value="Treasurer">Treasurer</option>
               <option value="Auditor">Auditor</option>
             </select>

@@ -534,4 +534,48 @@ router.get('/blockchain-nodes', async (req, res) => {
   }
 });
 
+
+// Add this route to your voting.js file
+router.post('/mark-voted', async (req, res) => {
+  try {
+    const { studentId } = req.body;
+    
+    if (!studentId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Student ID is required'
+      });
+    }
+
+    console.log('🔄 Marking voter as voted in SQL database:', studentId);
+
+    // Update the voter's has_voted status in the database
+    const [result] = await pool.execute(
+      'UPDATE voters SET has_voted = true, voted_at = NOW() WHERE student_id = ?',
+      [studentId]
+    );
+
+    if (result.affectedRows === 0) {
+      console.log('❌ Voter not found:', studentId);
+      return res.status(404).json({
+        success: false,
+        error: 'Voter not found'
+      });
+    }
+
+    console.log('✅ Voter marked as voted successfully:', studentId);
+    
+    res.json({
+      success: true,
+      message: 'Voter status updated successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ Mark voted error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update voter status: ' + error.message
+    });
+  }
+});
 export default router;

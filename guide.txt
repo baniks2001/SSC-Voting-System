@@ -17,8 +17,7 @@ node 1 start
     cd Blockchain
     ./start-node1.sh
 
-For node 2 start up
-    cd blockchain
+    just copy paste below in the terminal same sa the node 1 and enter
     geth --datadir node2 --networkid 1337 --port 30304 --http --http.port 8547 --http.addr 0.0.0.0 --http.corsdomain "*" --http.api "web3,eth,net,personal,admin" --ipcdisable --authrpc.port 8552 console
 
 to run the system

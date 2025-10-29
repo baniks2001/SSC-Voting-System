@@ -7,11 +7,15 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-     "node1": "cd blockchain && start-node1.bat",
+    "node1": "cd blockchain && start-node1.bat",
     "node2": "cd blockchain && start-node2.bat",
     "start-nodes": "start npm run node1 && timeout 5 && start npm run node2",
     "server": "node server.js",
-    "start": "concurrently \"npm run start-nodes\" \"npm run server\""
+    "start": "concurrently \"npm run start-nodes\" \"npm run server\"",
+    "compile-contract": "node scripts/compile.js",
+    "deploy-contract": "node scripts/deploy.js",
+    "test-contract": "node scripts/test-contract.js",
+    "setup-contract": "npm run compile-contract && npm run deploy-contract"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.47.1",

@@ -25,9 +25,13 @@ export const VoteReceipt: React.FC<VoteReceiptProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [blockchainReceipt, setBlockchainReceipt] = useState<any>(null);
   const [error, setError] = useState<string>('');
+  const [hasStartedSubmission, setHasStartedSubmission] = useState(false);
 
   useEffect(() => {
-    submitToBlockchain();
+    if (!hasStartedSubmission) {
+      setHasStartedSubmission(true);
+      submitToBlockchain();
+    }
   }, []);
 
   const submitToBlockchain = async () => {
@@ -102,6 +106,7 @@ export const VoteReceipt: React.FC<VoteReceiptProps> = ({
     return formatHash(hash);
   };
 
+  // Show loading state only when actively submitting
   if (submitting) {
     return (
       <div className="min-h-screen bg-white py-4 px-3 sm:px-4 lg:px-6">
@@ -146,6 +151,7 @@ export const VoteReceipt: React.FC<VoteReceiptProps> = ({
     );
   }
 
+  // Show error state if submission failed
   if (error) {
     return (
       <div className="min-h-screen bg-white py-4 px-3 sm:px-4 lg:px-6">
@@ -186,167 +192,179 @@ export const VoteReceipt: React.FC<VoteReceiptProps> = ({
     );
   }
 
-  if (!blockchainReceipt) {
-    return null;
+  // Show success state with receipt
+  if (blockchainReceipt) {
+    return (
+      <div className="min-h-screen bg-white py-4 px-3 sm:px-4 lg:px-6">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 animate-fadeIn">
+            <div className="card-header text-center p-6 bg-gradient-to-r from-blue-800 to-blue-900 text-white rounded-t-2xl">
+              <div className="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="w-8 h-8 text-white" />
+              </div>
+              <h1 className="text-2xl font-bold text-white">Vote Successfully Cast!</h1>
+              <p className="text-blue-100 mt-2">
+                Your vote has been cryptographically secured on the Ethereum blockchain
+              </p>
+            </div>
+
+            <div className="card-body p-6">
+              {/* Voter Information */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <h2 className="text-lg font-semibold text-blue-900 mb-3 flex items-center">
+                  <User className="w-5 h-5 mr-2 text-blue-800" />
+                  Voter Information
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-sm text-blue-700">Student ID</p>
+                    <p className="font-medium text-blue-900">{user?.studentId}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-blue-700">Voter Hash</p>
+                    <p className="font-mono text-sm text-blue-900">
+                      {formatHash(blockchainReceipt.voterHash || hashedBallotId)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Ballot Information */}
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
+                <h2 className="text-lg font-semibold text-purple-900 mb-3 flex items-center">
+                  <Fingerprint className="w-5 h-5 mr-2 text-purple-800" />
+                  Ballot Information
+                </h2>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-purple-700">Readable Ballot ID:</span>
+                    <span className="font-mono text-sm text-purple-900">
+                      {formatHash(ballotId)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-purple-700">Secure Hash (Blockchain):</span>
+                    <span className="font-mono text-sm text-purple-900">
+                      {formatHashedBallotId(hashedBallotId)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-purple-700">Votes Cast:</span>
+                    <span className="text-purple-900">
+                      {votes.length} position{votes.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Blockchain Receipt */}
+              <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
+                <h2 className="text-lg font-semibold text-green-900 mb-4 flex items-center">
+                  <FileText className="w-5 h-5 mr-2 text-green-800" />
+                  Blockchain Receipt
+                </h2>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-green-700">Transaction Hash:</span>
+                    <span className="font-mono text-sm text-green-900">
+                      {formatHash(blockchainReceipt.transactionHash)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-green-700">Block Number:</span>
+                    <span className="font-mono text-green-900">
+                      #{blockchainReceipt.blockNumber}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-green-700">Gas Used:</span>
+                    <span className="font-mono text-green-900">
+                      {blockchainReceipt.gasUsed || 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-green-700">Timestamp:</span>
+                    <span className="text-green-900">
+                      {new Date(blockchainReceipt.timestamp || Date.now()).toLocaleString()}
+                    </span>
+                  </div>
+                  {blockchainReceipt.node && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-green-700">Blockchain Node:</span>
+                      <span className="text-green-900 font-medium">
+                        {blockchainReceipt.node}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Vote Summary */}
+              <div className="border border-gray-200 rounded-lg p-6 mb-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Your Votes</h2>
+                <div className="space-y-4">
+                  {votes.map((vote, index) => (
+                    <div key={index} className="flex justify-between items-start py-3 border-b border-gray-100 last:border-b-0">
+                      <div className="flex-1">
+                        <span className="font-medium text-gray-900 block mb-1">{vote.position}</span>
+                        <div className="text-sm text-gray-600">
+                          <span className="font-medium">{vote.candidateName}</span>
+                          <span className="mx-2">•</span>
+                          <span>{vote.candidateParty}</span>
+                        </div>
+                      </div>
+                      <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-1" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Security Notice */}
+              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-start space-x-3">
+                  <Shield className="w-5 h-5 text-blue-800 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm">
+                    <h4 className="font-semibold text-blue-800">Cryptographic Security</h4>
+                    <p className="text-blue-700 mt-1">
+                      Your vote is secured with SHA-256 hashing and recorded on the immutable Ethereum blockchain. 
+                      The secure hash protects your identity while providing verifiable proof of voting.
+                      The transaction hash serves as cryptographic evidence that cannot be altered.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="mt-6 flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4">
+                <button
+                  onClick={() => window.print()}
+                  className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 px-6 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center justify-center space-x-2"
+                >
+                  <FileText className="w-4 h-4 text-blue-800" />
+                  <span>Print Receipt</span>
+                </button>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="bg-blue-800 hover:bg-blue-900 text-white py-3 px-6 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center justify-center space-x-2"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  <span>Finish</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
+  // Default state - should not normally be shown
   return (
     <div className="min-h-screen bg-white py-4 px-3 sm:px-4 lg:px-6">
       <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 animate-fadeIn">
-          <div className="card-header text-center p-6 bg-gradient-to-r from-blue-800 to-blue-900 text-white rounded-t-2xl">
-            <div className="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold text-white">Vote Successfully Cast!</h1>
-            <p className="text-blue-100 mt-2">
-              Your vote has been cryptographically secured on the Ethereum blockchain
-            </p>
-          </div>
-
-          <div className="card-body p-6">
-            {/* Voter Information */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <h2 className="text-lg font-semibold text-blue-900 mb-3 flex items-center">
-                <User className="w-5 h-5 mr-2 text-blue-800" />
-                Voter Information
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <p className="text-sm text-blue-700">Student ID</p>
-                  <p className="font-medium text-blue-900">{user?.studentId}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-blue-700">Voter Hash</p>
-                  <p className="font-mono text-sm text-blue-900">
-                    {formatHash(blockchainReceipt.voterHash)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Ballot Information */}
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
-              <h2 className="text-lg font-semibold text-purple-900 mb-3 flex items-center">
-                <Fingerprint className="w-5 h-5 mr-2 text-purple-800" />
-                Ballot Information
-              </h2>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-purple-700">Readable Ballot ID:</span>
-                  <span className="font-mono text-sm text-purple-900">
-                    {formatHash(ballotId)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-purple-700">Secure Hash (Blockchain):</span>
-                  <span className="font-mono text-sm text-purple-900">
-                    {formatHashedBallotId(hashedBallotId)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-purple-700">Votes Cast:</span>
-                  <span className="text-purple-900">
-                    {votes.length} position{votes.length !== 1 ? 's' : ''}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Blockchain Receipt */}
-            <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
-              <h2 className="text-lg font-semibold text-green-900 mb-4 flex items-center">
-                <FileText className="w-5 h-5 mr-2 text-green-800" />
-                Blockchain Receipt
-              </h2>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-green-700">Transaction Hash:</span>
-                  <span className="font-mono text-sm text-green-900">
-                    {formatHash(blockchainReceipt.transactionHash)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-green-700">Block Number:</span>
-                  <span className="font-mono text-green-900">
-                    #{blockchainReceipt.blockNumber}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-green-700">Gas Used:</span>
-                  <span className="font-mono text-green-900">
-                    {blockchainReceipt.gasUsed || 'N/A'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-green-700">Timestamp:</span>
-                  <span className="text-green-900">
-                    {new Date(blockchainReceipt.timestamp).toLocaleString()}
-                  </span>
-                </div>
-                {blockchainReceipt.node && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-green-700">Blockchain Node:</span>
-                    <span className="text-green-900 font-medium">
-                      {blockchainReceipt.node}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Vote Summary */}
-            <div className="border border-gray-200 rounded-lg p-6 mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Your Votes</h2>
-              <div className="space-y-4">
-                {votes.map((vote, index) => (
-                  <div key={index} className="flex justify-between items-start py-3 border-b border-gray-100 last:border-b-0">
-                    <div className="flex-1">
-                      <span className="font-medium text-gray-900 block mb-1">{vote.position}</span>
-                      <div className="text-sm text-gray-600">
-                        <span className="font-medium">{vote.candidateName}</span>
-                        <span className="mx-2">•</span>
-                        <span>{vote.candidateParty}</span>
-                      </div>
-                    </div>
-                    <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-1" />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Security Notice */}
-            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-start space-x-3">
-                <Shield className="w-5 h-5 text-blue-800 mt-0.5 flex-shrink-0" />
-                <div className="text-sm">
-                  <h4 className="font-semibold text-blue-800">Cryptographic Security</h4>
-                  <p className="text-blue-700 mt-1">
-                    Your vote is secured with SHA-256 hashing and recorded on the immutable Ethereum blockchain. 
-                    The secure hash protects your identity while providing verifiable proof of voting.
-                    The transaction hash serves as cryptographic evidence that cannot be altered.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="mt-6 flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4">
-              <button
-                onClick={() => window.print()}
-                className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 px-6 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center justify-center space-x-2"
-              >
-                <FileText className="w-4 h-4 text-blue-800" />
-                <span>Print Receipt</span>
-              </button>
-              <button
-                onClick={() => window.location.reload()}
-                className="bg-blue-800 hover:bg-blue-900 text-white py-3 px-6 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center justify-center space-x-2"
-              >
-                <CheckCircle className="w-4 h-4" />
-                <span>Finish</span>
-              </button>
-            </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 text-center">
+          <div className="py-8">
+            <p className="text-gray-600">Preparing vote submission...</p>
           </div>
         </div>
       </div>
