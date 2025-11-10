@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, User, Lock, Mail } from 'lucide-react';
+import { Eye, EyeOff, User, Lock, Mail, PauseCircle, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePoll } from '../../contexts/PollContext';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 
 interface LoginFormProps {
@@ -16,9 +17,18 @@ export const LoginForm: React.FC<LoginFormProps> = ({ isAdmin, onToggleAdmin }) 
   const [error, setError] = useState('');
 
   const { login } = useAuth();
+  const { pollStatus, isLoginEnabled } = usePoll();
+  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent login if voting is not active (only for student login)
+    if (!isAdmin && !isLoginEnabled) {
+      setError('Voting is currently not available. Please try again later.');
+      return;
+    }
+
     if (!emailOrStudentId || !password) {
       setError('Please fill in all fields');
       return;
@@ -29,12 +39,40 @@ export const LoginForm: React.FC<LoginFormProps> = ({ isAdmin, onToggleAdmin }) 
 
     try {
       await login(emailOrStudentId, password, isAdmin);
+      // Blockchain status will be fetched after successful login in the dashboard
     } catch (error: any) {
       setError(error.message || 'Login failed');
     } finally {
       setLoading(false);
     }
   };
+
+  const getStatusMessage = () => {
+    switch (pollStatus) {
+      case 'paused':
+        return {
+          message: 'Voting is currently paused',
+          icon: <PauseCircle className="w-6 h-6 text-yellow-600" />,
+          color: 'bg-yellow-50 border-yellow-200 text-yellow-800'
+        };
+      case 'finished':
+        return {
+          message: 'Voting has ended',
+          icon: <CheckCircle className="w-6 h-6 text-green-600" />,
+          color: 'bg-green-50 border-green-200 text-green-800'
+        };
+      case 'not_started':
+        return {
+          message: 'Voting has not started yet',
+          icon: <PauseCircle className="w-6 h-6 text-gray-600" />,
+          color: 'bg-gray-50 border-gray-200 text-gray-800'
+        };
+      default:
+        return null;
+    }
+  };
+
+  const statusInfo = getStatusMessage();
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -65,6 +103,21 @@ export const LoginForm: React.FC<LoginFormProps> = ({ isAdmin, onToggleAdmin }) 
         </div>
 
         <div className="card-body">
+          {/* Voting Status Banner */}
+          {!isAdmin && statusInfo && (
+            <div className={`${statusInfo.color} border rounded-lg p-4 mb-4 flex items-center space-x-3`}>
+              {statusInfo.icon}
+              <div>
+                <p className="font-medium">{statusInfo.message}</p>
+                <p className="text-sm opacity-90">
+                  {pollStatus === 'paused' && 'Please wait for voting to resume'}
+                  {pollStatus === 'finished' && 'Thank you for participating'}
+                  {pollStatus === 'not_started' && 'Please wait for voting to start'}
+                </p>
+              </div>
+            </div>
+          )}
+
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
               {error}
@@ -93,7 +146,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ isAdmin, onToggleAdmin }) 
                 className="form-input"
                 placeholder={isAdmin ? 'admin@example.com' : '2021-001'}
                 required
-                disabled={loading}
+                disabled={loading || (!isAdmin && !isLoginEnabled)}
               />
             </div>
 
@@ -110,13 +163,13 @@ export const LoginForm: React.FC<LoginFormProps> = ({ isAdmin, onToggleAdmin }) 
                   className="form-input pr-12"
                   placeholder="Enter your password"
                   required
-                  disabled={loading}
+                  disabled={loading || (!isAdmin && !isLoginEnabled)}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  disabled={loading}
+                  disabled={loading || (!isAdmin && !isLoginEnabled)}
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -125,14 +178,16 @@ export const LoginForm: React.FC<LoginFormProps> = ({ isAdmin, onToggleAdmin }) 
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full btn-primary flex items-center justify-center space-x-2"
+              disabled={loading || (!isAdmin && !isLoginEnabled)}
+              className="w-full btn-primary flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <LoadingSpinner size="sm" color="white" />
               ) : (
                 <>
-                  <span>Sign In</span>
+                  <span>
+                    {!isAdmin && !isLoginEnabled ? 'Login Disabled' : 'Sign In'}
+                  </span>
                 </>
               )}
             </button>
@@ -148,8 +203,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({ isAdmin, onToggleAdmin }) 
               </button>
             </div>
           )}
-
-          
         </div>
       </div>
     </div>

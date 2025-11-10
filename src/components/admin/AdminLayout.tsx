@@ -16,47 +16,116 @@ interface AdminLayoutProps {
   children: ReactNode;
   activeTab: string;
   onTabChange: (tab: string) => void;
+  onLogout: () => void;
 }
 
 export const AdminLayout: React.FC<AdminLayoutProps> = ({ 
   children, 
   activeTab, 
-  onTabChange 
+  onTabChange,
+  onLogout
 }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user, logout, isPollMonitor } = useAuth();
+  const { user } = useAuth();
 
   const getNavItems = () => {
-    if (isPollMonitor) {
+    if (!user) return [];
+    
+    const userRole = user.role || user.type;
+    
+    console.log('🛡️ User Role:', userRole, 'Building navigation...');
+
+    // Poll Monitor: ONLY Poll Monitor tab
+    if (userRole === 'poll_monitor') {
+      console.log('🔒 Poll Monitor detected - showing only Poll Monitor tab');
       return [
         { id: 'monitor', label: 'Poll Monitor', icon: Monitor }
       ];
     }
 
+    // Auditor: ONLY Dashboard tab
+    if (userRole === 'auditor') {
+      console.log('🔒 Auditor detected - showing only Dashboard tab');
+      return [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard }
+      ];
+    }
+
+    // Admin: Dashboard, Add Candidates, Add Voters, Poll Monitor
+    if (userRole === 'admin') {
+      console.log('🔒 Admin detected - showing Dashboard, Candidates, Voters, Poll Monitor');
+      return [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'candidates', label: 'Add Candidates', icon: Vote },
+        { id: 'voters', label: 'Add Voters', icon: Users },
+        { id: 'monitor', label: 'Poll Monitor', icon: Monitor }
+      ];
+    }
+
+    // Super Admin: Everything including Add Admin
+    if (userRole === 'super_admin' || userRole === 'super_admin') {
+      console.log('🔓 Super Admin detected - showing all tabs');
+      return [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'admins', label: 'Add Admin', icon: UserPlus },
+        { id: 'candidates', label: 'Add Candidates', icon: Vote },
+        { id: 'voters', label: 'Add Voters', icon: Users },
+        { id: 'monitor', label: 'Poll Monitor', icon: Monitor }
+      ];
+    }
+
+    // Default fallback (should not happen)
+    console.warn('⚠️ Unknown role:', userRole);
     return [
-      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      ...(user?.isSuperAdmin ? [
-        { id: 'admins', label: 'Add Admin', icon: UserPlus }
-      ] : []),
-      { id: 'candidates', label: 'Add Candidates', icon: Vote },
-      { id: 'voters', label: 'Add Voters', icon: Users },
-      { id: 'monitor', label: 'Poll Monitor', icon: Monitor }
+      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard }
     ];
   };
 
   const navItems = getNavItems();
 
+  // Ensure users stay on their allowed tabs
   useEffect(() => {
-    if (isPollMonitor && activeTab !== 'monitor') {
-      onTabChange('monitor');
+    if (user && navItems.length > 0) {
+      const currentTabIsAllowed = navItems.some(item => item.id === activeTab);
+      if (!currentTabIsAllowed) {
+        console.log('🔄 Redirecting to allowed tab:', navItems[0].id);
+        onTabChange(navItems[0].id);
+      }
     }
-  }, [isPollMonitor, activeTab, onTabChange]);
+  }, [user, navItems, activeTab, onTabChange]);
 
-  useEffect(() => {
-    if (isPollMonitor && activeTab !== 'monitor') {
-      onTabChange('monitor');
-    }
-  }, [isPollMonitor, onTabChange]);
+  const getPanelTitle = () => {
+    if (!user) return 'Admin Panel';
+    
+    const userRole = user.role || user.type;
+    
+    if (userRole === 'poll_monitor') return 'Poll Monitor';
+    if (userRole === 'auditor') return 'Auditor Dashboard';
+    if (userRole === 'admin') return 'Admin Panel';
+    if (userRole === 'super_admin' || userRole === 'super_admin') return 'Super Admin Panel';
+    
+    return 'Admin Panel';
+  };
+
+  const getRoleDisplay = () => {
+    if (!user) return 'Loading...';
+    
+    const userRole = user.role || user.type;
+    
+    if (userRole === 'poll_monitor') return 'Poll Monitor (View Only)';
+    if (userRole === 'auditor') return 'Auditor (View Only)';
+    if (userRole === 'admin') return 'Admin';
+    if (userRole === 'super_admin' || userRole === 'super_admin') return 'Super Admin';
+    
+    return userRole || 'User';
+  };
+
+  const isViewOnly = () => {
+    if (!user) return false;
+    
+    const userRole = user.role || user.type;
+    return userRole === 'poll_monitor' || userRole === 'auditor';
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -79,9 +148,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             />
             <div>
               <h1 className="text-lg font-bold text-gray-900">
-                {isPollMonitor ? 'Poll Monitor' : 'Admin Panel'}
+                {getPanelTitle()}
               </h1>
-              {isPollMonitor && (
+              {isViewOnly() && (
                 <span className="text-xs text-blue-600 font-medium flex items-center mt-1">
                   <Eye className="w-3 h-3 mr-1" />
                   View Only Access
@@ -111,8 +180,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             >
               <item.icon className="w-5 h-5 mr-3" />
               {item.label}
-              {isPollMonitor && (
-                <span className="ml-2 text-xs text-blue-600">(Live View)</span>
+              {isViewOnly() && (
+                <span className="ml-2 text-xs text-blue-600">(View Only)</span>
               )}
             </button>
           ))}
@@ -127,16 +196,15 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">
-                {user?.fullName}
+                {user?.fullName || user?.email || 'User'}
               </p>
               <p className="text-xs text-gray-600 truncate">
-                {isPollMonitor ? 'Poll Monitor' : user?.isSuperAdmin ? 'Super Admin' : user?.role}
-                {isPollMonitor && ' (View Only)'}
+                {getRoleDisplay()}
               </p>
             </div>
           </div>
           <button
-            onClick={logout}
+            onClick={onLogout}
             className="nav-item w-full text-left text-red-600 hover:bg-red-50"
           >
             <LogOut className="w-5 h-5 mr-3" />
@@ -151,9 +219,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           <div className="flex items-center justify-between p-4">
             <div>
               <h1 className="text-lg font-semibold text-gray-900">
-                {isPollMonitor ? 'Poll Monitor' : 'Admin Panel'}
+                {getPanelTitle()}
               </h1>
-              {isPollMonitor && (
+              {isViewOnly() && (
                 <span className="text-xs text-blue-600 font-medium flex items-center mt-1">
                   <Eye className="w-3 h-3 mr-1" />
                   View Only Access

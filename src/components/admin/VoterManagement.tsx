@@ -31,6 +31,8 @@ export const VoterManagement: React.FC = () => {
   const [coursesLoading, setCoursesLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
   const [editingVoter, setEditingVoter] = useState<Voter | null>(null);
@@ -74,27 +76,27 @@ export const VoterManagement: React.FC = () => {
   }, []);
 
   const fetchVoters = async () => {
-  try {
-    const params = new URLSearchParams();
-    if (searchTerm) params.append('search', searchTerm);
-    if (filters.course) params.append('course', filters.course);
-    if (filters.year) params.append('year', filters.year);
-    if (filters.section) params.append('section', filters.section);
-    if (filters.hasVoted) params.append('hasVoted', filters.hasVoted);
+    try {
+      const params = new URLSearchParams();
+      if (searchTerm) params.append('search', searchTerm);
+      if (filters.course) params.append('course', filters.course);
+      if (filters.year) params.append('year', filters.year);
+      if (filters.section) params.append('section', filters.section);
+      if (filters.hasVoted) params.append('hasVoted', filters.hasVoted);
 
-    const response = await api.get(`/voters?${params.toString()}`);
-    
-    // Handle potential structured response
-    const votersData = response.data || response;
-    setVoters(Array.isArray(votersData) ? votersData : []);
-    
-  } catch (error: any) {
-    showToast('error', 'Failed to fetch voters');
-    setVoters([]);
-  } finally {
-    setLoading(false);
-  }
-};
+      const response = await api.get(`/voters?${params.toString()}`);
+      
+      // Handle potential structured response
+      const votersData = response.data || response;
+      setVoters(Array.isArray(votersData) ? votersData : []);
+      
+    } catch (error: any) {
+      showToast('error', 'Failed to fetch voters');
+      setVoters([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchCourses = async () => {
     try {
@@ -149,34 +151,64 @@ export const VoterManagement: React.FC = () => {
     setSelectedStudents([]);
   };
 
-  // In your VoterManagement.tsx - update the generatePassword function
-const generatePassword = () => {
-  const { studentId, fullName, yearLevel, section } = formData;
+  // Delete all selected students
+  const handleDeleteAll = async () => {
+    if (selectedStudents.length === 0) {
+      showToast('warning', 'No voters selected for deletion');
+      return;
+    }
 
-  if (!fullName.trim()) {
-    showToast('warning', 'Please enter full name first');
-    return;
-  }
+    setShowDeleteModal(true);
+  };
 
-  if (!studentId.trim()) {
-    showToast('warning', 'Please enter student ID first');
-    return;
-  }
+  const confirmDeleteAll = async () => {
+    try {
+      setDeleting(true);
+      
+      // Delete voters one by one
+      for (const studentId of selectedStudents) {
+        await api.delete(`/voters/${studentId}`);
+      }
 
-  try {
-    const lastThreeDigits = studentId.trim().slice(-3);
-    const nameParts = fullName.trim().split(/\s+/);
-    const initials = nameParts.map(part => part.charAt(0).toLowerCase()).join('');
-    const cleanSection = (section || '').replace(/\s+/g, '').toLowerCase();
-    const generatedPassword = `${initials}${yearLevel}${cleanSection}-${lastThreeDigits}`;
+      showToast('success', `Successfully deleted ${selectedStudents.length} voter(s)`);
+      setSelectedStudents([]);
+      setShowDeleteModal(false);
+      fetchVoters();
+    } catch (error: any) {
+      showToast('error', error.message || 'Failed to delete voters');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
-    setFormData({ ...formData, password: generatedPassword });
-    showToast('success', 'Password generated successfully');
-  } catch (error) {
-    console.error('Password generation error:', error);
-    showToast('error', 'Failed to generate password');
-  }
-};
+  // Generate password function
+  const generatePassword = () => {
+    const { studentId, fullName, yearLevel, section } = formData;
+
+    if (!fullName.trim()) {
+      showToast('warning', 'Please enter full name first');
+      return;
+    }
+
+    if (!studentId.trim()) {
+      showToast('warning', 'Please enter student ID first');
+      return;
+    }
+
+    try {
+      const lastThreeDigits = studentId.trim().slice(-3);
+      const nameParts = fullName.trim().split(/\s+/);
+      const initials = nameParts.map(part => part.charAt(0).toLowerCase()).join('');
+      const cleanSection = (section || '').replace(/\s+/g, '').toLowerCase();
+      const generatedPassword = `${initials}${yearLevel}${cleanSection}-${lastThreeDigits}`;
+
+      setFormData({ ...formData, password: generatedPassword });
+      showToast('success', 'Password generated successfully');
+    } catch (error) {
+      console.error('Password generation error:', error);
+      showToast('error', 'Failed to generate password');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -273,175 +305,175 @@ const generatePassword = () => {
     return interval;
   };
 
-// In your VoterManagement.tsx - update the handleExport function
-const handleExport = async () => {
-  try {
-    console.log('🔄 Export process started...');
-    
-    const selectedOptions = Object.entries(exportOptions)
-      .filter(([, value]) => value)
-      .map(([key]) => key);
-    
-    if (selectedOptions.length === 0) {
-      showToast('warning', 'Please select at least one field to export');
-      return;
-    }
-
-    console.log('📊 Selected export options:', selectedOptions);
-
-    setExporting(true);
-    const progressInterval = simulateProgress();
-
-    const params = new URLSearchParams();
-
-    // Add selected fields to params - FIXED: use correct parameter name
-    selectedOptions.forEach(field => {
-      params.append('include[]', field);
-    });
-    console.log('✅ Added export fields:', selectedOptions);
-
-    // Add selected student IDs if any are selected
-    if (selectedStudents.length > 0) {
-      selectedStudents.forEach(id => {
-        params.append('studentIds', id.toString());
-      });
-      console.log('✅ Added student IDs:', selectedStudents);
-    }
-
-    // Use course filters if no specific students selected
-    if (selectedStudents.length === 0 && selectedExportCourses.length > 0) {
-      selectedExportCourses.forEach(course => {
-        params.append('courses', course);
-      });
-      console.log('✅ Added course filters:', selectedExportCourses);
-    }
-
-    // Apply current filters if no specific selection
-    if (selectedStudents.length === 0) {
-      if (filters.course) {
-        params.append('course', filters.course);
-      }
-      if (filters.year) {
-        params.append('year', filters.year);
-      }
-      if (filters.section) {
-        params.append('section', filters.section);
-      }
-      if (filters.hasVoted) {
-        params.append('hasVoted', filters.hasVoted);
-      }
-      if (searchTerm) {
-        params.append('search', searchTerm);
-      }
-    }
-
-    // Request password generation
-    if (exportOptions.password) {
-      params.append('decryptPasswords', 'true');
-    }
-
-    const apiUrl = `/voters/export?${params.toString()}`;
-    console.log('🌐 API URL:', apiUrl);
-
-    const response = await api.get(apiUrl);
-    console.log('📨 API Response:', response);
-
-    clearInterval(progressInterval);
-    setExportProgress(100);
-
-    // Handle response
-    let exportData = response;
-    
-    if (response && typeof response === 'object') {
-      if (response.success === false) {
-        throw new Error(response.error || 'Export failed');
-      }
+  // Handle export function
+  const handleExport = async () => {
+    try {
+      console.log('🔄 Export process started...');
       
-      if (response.data !== undefined) {
-        exportData = response.data;
+      const selectedOptions = Object.entries(exportOptions)
+        .filter(([, value]) => value)
+        .map(([key]) => key);
+      
+      if (selectedOptions.length === 0) {
+        showToast('warning', 'Please select at least one field to export');
+        return;
       }
-    }
 
-    if (!exportData || exportData.length === 0) {
-      showToast('warning', 'No data found for the selected filters');
-      setExporting(false);
-      setExportProgress(0);
-      return;
-    }
+      console.log('📊 Selected export options:', selectedOptions);
 
-    console.log('📊 Data to export:', exportData[0]); // Log first record
+      setExporting(true);
+      const progressInterval = simulateProgress();
 
-    // Convert to CSV
-    const csvContent = convertToCSV(exportData);
-    const filename = `voters_export_${new Date().toISOString().split('T')[0]}.csv`;
+      const params = new URLSearchParams();
 
-    downloadCSV(csvContent, filename);
+      // Add selected fields to params - FIXED: use correct parameter name
+      selectedOptions.forEach(field => {
+        params.append('include[]', field);
+      });
+      console.log('✅ Added export fields:', selectedOptions);
 
-    setTimeout(() => {
-      setShowExportModal(false);
-      setExporting(false);
-      setExportProgress(0);
-      setSelectedStudents([]);
-      setStudentSearch('');
-      showToast('success', `Exported ${exportData.length} record(s) successfully`);
-    }, 500);
+      // Add selected student IDs if any are selected
+      if (selectedStudents.length > 0) {
+        selectedStudents.forEach(id => {
+          params.append('studentIds', id.toString());
+        });
+        console.log('✅ Added student IDs:', selectedStudents);
+      }
 
-  } catch (error: any) {
-    console.error('❌ Export error:', error);
-    setExporting(false);
-    setExportProgress(0);
-    showToast('error', error.message || 'Failed to export data');
-  }
-};
+      // Use course filters if no specific students selected
+      if (selectedStudents.length === 0 && selectedExportCourses.length > 0) {
+        selectedExportCourses.forEach(course => {
+          params.append('courses', course);
+        });
+        console.log('✅ Added course filters:', selectedExportCourses);
+      }
 
-  // Update your convertToCSV function to handle the new data structure
-const convertToCSV = (data: any[]) => {
-  if (data.length === 0) return '';
+      // Apply current filters if no specific selection
+      if (selectedStudents.length === 0) {
+        if (filters.course) {
+          params.append('course', filters.course);
+        }
+        if (filters.year) {
+          params.append('year', filters.year);
+        }
+        if (filters.section) {
+          params.append('section', filters.section);
+        }
+        if (filters.hasVoted) {
+          params.append('hasVoted', filters.hasVoted);
+        }
+        if (searchTerm) {
+          params.append('search', searchTerm);
+        }
+      }
 
-  // Get all unique keys from the first object
-  const firstItem = data[0];
-  if (!firstItem) return '';
-  
-  const keys = Object.keys(firstItem);
-  if (keys.length === 0) return '';
+      // Request password generation
+      if (exportOptions.password) {
+        params.append('decryptPasswords', 'true');
+      }
 
-  console.log('📋 CSV keys found:', keys);
+      const apiUrl = `/voters/export?${params.toString()}`;
+      console.log('🌐 API URL:', apiUrl);
 
-  // Map database keys to friendly headers
-  const headerMap: { [key: string]: string } = {
-    'student_id': 'Student ID',
-    'full_name': 'Full Name', 
-    'course': 'Course',
-    'year_level': 'Year Level',
-    'section': 'Section',
-    'has_voted': 'Voting Status',
-    'voted_at': 'Voted At',
-    'created_at': 'Registered At',
-    'password': 'Password'
-  };
+      const response = await api.get(apiUrl);
+      console.log('📨 API Response:', response);
 
-  const headers = keys.map(key => headerMap[key] || key);
+      clearInterval(progressInterval);
+      setExportProgress(100);
 
-  const csvRows = [
-    headers.join(','),
-    ...data.map(row =>
-      keys.map(key => {
-        let value = row[key] || '';
-        
-        // Handle values that might contain commas or special characters
-        if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
-          value = value.replace(/"/g, '""'); // Escape double quotes
-          return `"${value}"`;
+      // Handle response
+      let exportData = response;
+      
+      if (response && typeof response === 'object') {
+        if (response.success === false) {
+          throw new Error(response.error || 'Export failed');
         }
         
-        return value;
-      }).join(',')
-    )
-  ];
+        if (response.data !== undefined) {
+          exportData = response.data;
+        }
+      }
 
-  console.log('📄 CSV content preview:', csvRows.slice(0, 2).join('\n'));
-  return csvRows.join('\n');
-};
+      if (!exportData || exportData.length === 0) {
+        showToast('warning', 'No data found for the selected filters');
+        setExporting(false);
+        setExportProgress(0);
+        return;
+      }
+
+      console.log('📊 Data to export:', exportData[0]); // Log first record
+
+      // Convert to CSV
+      const csvContent = convertToCSV(exportData);
+      const filename = `voters_export_${new Date().toISOString().split('T')[0]}.csv`;
+
+      downloadCSV(csvContent, filename);
+
+      setTimeout(() => {
+        setShowExportModal(false);
+        setExporting(false);
+        setExportProgress(0);
+        setSelectedStudents([]);
+        setStudentSearch('');
+        showToast('success', `Exported ${exportData.length} record(s) successfully`);
+      }, 500);
+
+    } catch (error: any) {
+      console.error('❌ Export error:', error);
+      setExporting(false);
+      setExportProgress(0);
+      showToast('error', error.message || 'Failed to export data');
+    }
+  };
+
+  // Convert to CSV function
+  const convertToCSV = (data: any[]) => {
+    if (data.length === 0) return '';
+
+    // Get all unique keys from the first object
+    const firstItem = data[0];
+    if (!firstItem) return '';
+    
+    const keys = Object.keys(firstItem);
+    if (keys.length === 0) return '';
+
+    console.log('📋 CSV keys found:', keys);
+
+    // Map database keys to friendly headers
+    const headerMap: { [key: string]: string } = {
+      'student_id': 'Student ID',
+      'full_name': 'Full Name', 
+      'course': 'Course',
+      'year_level': 'Year Level',
+      'section': 'Section',
+      'has_voted': 'Voting Status',
+      'voted_at': 'Voted At',
+      'created_at': 'Registered At',
+      'password': 'Password'
+    };
+
+    const headers = keys.map(key => headerMap[key] || key);
+
+    const csvRows = [
+      headers.join(','),
+      ...data.map(row =>
+        keys.map(key => {
+          let value = row[key] || '';
+          
+          // Handle values that might contain commas or special characters
+          if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+            value = value.replace(/"/g, '""'); // Escape double quotes
+            return `"${value}"`;
+          }
+          
+          return value;
+        }).join(',')
+      )
+    ];
+
+    console.log('📄 CSV content preview:', csvRows.slice(0, 2).join('\n'));
+    return csvRows.join('\n');
+  };
 
   const downloadCSV = (content: string, filename: string) => {
     const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
@@ -489,6 +521,15 @@ const convertToCSV = (data: any[]) => {
           <p className="text-gray-600">Manage student voters and their information</p>
         </div>
         <div className="flex space-x-3">
+          {selectedStudents.length > 0 && (
+            <button
+              onClick={handleDeleteAll}
+              className="btn-danger flex items-center space-x-2"
+            >
+              <Trash2 className="w-5 h-5" />
+              <span>Delete Selected ({selectedStudents.length})</span>
+            </button>
+          )}
           <button
             onClick={() => setShowExportModal(true)}
             className="btn-secondary flex items-center space-x-2"
@@ -845,6 +886,60 @@ const convertToCSV = (data: any[]) => {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title="Delete Selected Voters"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="bg-red-50 border border-red-200 p-3 rounded-lg">
+            <div className="flex items-start space-x-2">
+              <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm text-red-800 font-medium">Warning: This action cannot be undone</p>
+                <p className="text-xs text-red-700 mt-1">
+                  You are about to delete {selectedStudents.length} voter(s). This will permanently remove all selected voter accounts and their data.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-sm text-gray-600">
+            Are you sure you want to delete the selected voters?
+          </p>
+
+          <div className="flex space-x-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setShowDeleteModal(false)}
+              className="flex-1 btn-secondary"
+              disabled={deleting}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmDeleteAll}
+              className="flex-1 btn-danger flex items-center justify-center"
+              disabled={deleting}
+            >
+              {deleting ? (
+                <>
+                  <LoadingSpinner size="sm" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete ({selectedStudents.length})
+                </>
+              )}
+            </button>
+          </div>
+        </div>
       </Modal>
 
       {/* Export Selection Modal - Landscape Layout */}

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Oct 29, 2025 at 10:12 AM
+-- Generation Time: Nov 10, 2025 at 10:15 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -45,8 +45,8 @@ CREATE TABLE `admins` (
 
 INSERT INTO `admins` (`id`, `email`, `password`, `full_name`, `role`, `created_at`, `updated_at`, `created_by`, `is_active`) VALUES
 (1, 'servandoytio@gmail.com', '$2a$10$Q41qOjEvvn/jjSJ2GfzCt.tcFwCcVHHHWFkO.2cjmvR.LZPCX1ocW', 'Servando Tio', 'admin', '2025-09-23 07:42:40', '2025-09-23 07:42:40', 0, 1),
-(3, 'monitor@voting.edu', '$2a$10$dHN42/gcmEJ6C3g7C3QuCOyY/0jXvrFm3czcyiXqwCi5NAGDWl3Hu', 'Poll Monitoring Account', 'poll_monitor', '2025-09-25 01:31:41', '2025-09-26 12:56:17', 0, 1),
-(4, 'audit@voting.edu', '$2a$10$JChMAxbpRRLWVMj4TB0s1eOeIIr42.s4X7hOvcIfD.2no6Rk6MlmG', 'Audit Account', 'auditor', '2025-09-26 12:46:53', '2025-09-26 12:46:53', 0, 1);
+(3, 'monitor@voting.edu', '$2a$10$T4dsGnunL8e4mTCtbs807OcrfsfUSW9AVshzkqagsDfAnM0Ub4asC', 'Poll Monitoring Account', 'poll_monitor', '2025-09-25 01:31:41', '2025-11-10 08:40:10', 0, 1),
+(4, 'audit@voting.edu', '$2a$10$mrwt.kDrRoUUAVqzuW.vb..zWeU02GATCnmqU5YBAMBNhoxbyIE12', 'Audit Account', 'auditor', '2025-09-26 12:46:53', '2025-11-10 08:39:31', 0, 1);
 
 -- --------------------------------------------------------
 
@@ -215,7 +215,244 @@ INSERT INTO `audit_logs` (`id`, `user_id`, `user_type`, `action`, `details`, `ip
 (179, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 09:07:46'),
 (180, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 13', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 09:09:19'),
 (181, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 10', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 09:09:20'),
-(182, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 9', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 09:09:22');
+(182, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 9', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 09:09:22'),
+(183, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 11:45:03'),
+(184, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2025-001', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 11:45:36'),
+(185, 14, 'voter', 'LOGIN_FAILED', 'Invalid password', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 11:46:08'),
+(186, 14, 'voter', 'LOGIN_SUCCESS', 'Voter logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 11:46:22'),
+(187, 2025, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x47a6641750a2d62717f924f5bda52a7091dace29666f98315361516c7d1f715f (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 11:46:32'),
+(188, 2025, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x041a7bdfb9756d48aa7e1f1e5c48968f0aac74ccfd0fe84998495e6f72523ebf (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 11:46:32'),
+(189, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 11:46:38'),
+(190, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2025-002', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 11:47:59'),
+(191, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 11:48:15'),
+(192, 15, 'voter', 'LOGIN_FAILED', 'Invalid password', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 11:48:54'),
+(193, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 11:56:00'),
+(194, NULL, 'voter', 'LOGIN_FAILED', 'Failed login attempt for student ID: superadmin@voting.edu', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 11:58:14'),
+(195, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 11:58:17'),
+(196, 1, 'admin', 'PAUSE_POLL', 'Poll status updated', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 11:58:47'),
+(197, 1, 'admin', 'START_POLL', 'Poll status updated', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 11:58:48'),
+(198, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 15', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:02:57'),
+(199, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 14', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:02:59'),
+(200, NULL, 'voter', 'LOGIN_FAILED', 'Failed login attempt for student ID: superadmin@voting.edu', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:13:58'),
+(201, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:14:03'),
+(202, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:17:58'),
+(203, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2025-001', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:18:38'),
+(204, 16, 'voter', 'LOGIN_FAILED', 'Invalid password', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 12:19:02'),
+(205, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 16', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:24:58'),
+(206, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:32:08'),
+(207, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2025-001', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:32:28'),
+(208, 17, 'voter', 'LOGIN_FAILED', 'Invalid password', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:32:48'),
+(209, 17, 'voter', 'LOGIN_FAILED', 'Invalid password', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:32:59'),
+(210, 17, 'voter', 'LOGIN_FAILED', 'Invalid password', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:33:13'),
+(211, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:34:21'),
+(212, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 17', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:34:25'),
+(213, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2025-001', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:37:34'),
+(214, 18, 'voter', 'LOGIN_SUCCESS', 'Voter logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:37:50'),
+(215, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:43:44'),
+(216, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 18', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:43:46'),
+(217, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2025-001', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:44:07'),
+(218, 1, 'admin', 'LOGIN_SUCCESS', 'Admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:44:49'),
+(219, 19, 'voter', 'LOGIN_FAILED', 'Invalid password', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:46:56'),
+(220, 19, 'voter', 'LOGIN_FAILED', 'Invalid password', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:46:58'),
+(221, 19, 'voter', 'LOGIN_FAILED', 'Invalid password', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:47:05'),
+(222, 19, 'voter', 'LOGIN_FAILED', 'Invalid password', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:47:21'),
+(223, 19, 'voter', 'LOGIN_FAILED', 'Invalid password', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:47:29'),
+(224, 19, 'voter', 'LOGIN_FAILED', 'Invalid password', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:47:37'),
+(225, 19, 'voter', 'LOGIN_FAILED', 'Invalid password', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:47:39'),
+(226, 19, 'voter', 'LOGIN_FAILED', 'Invalid password', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:47:45'),
+(227, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:47:53'),
+(228, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 19', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:47:55'),
+(229, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2025-001', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:48:12'),
+(230, 20, 'voter', 'LOGIN_FAILED', 'Invalid password', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:48:33'),
+(231, 20, 'voter', 'LOGIN_FAILED', 'Invalid password', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:48:52'),
+(232, 20, 'voter', 'LOGIN_FAILED', 'Invalid password', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:49:13'),
+(233, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:49:20'),
+(234, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 20', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:49:26'),
+(235, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2025-069', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:49:56'),
+(236, 21, 'voter', 'LOGIN_FAILED', 'Invalid password', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:50:22'),
+(237, 1, 'admin', 'LOGIN_SUCCESS', 'Admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:51:50'),
+(238, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 21', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:52:00'),
+(239, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2025-035', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:52:17'),
+(240, 22, 'voter', 'LOGIN_SUCCESS', 'Voter logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:52:47'),
+(241, 2025, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x032acf91371b17054dbb0485b350945cb6afd117ff4dcd146d3eed51b3a579cc (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:52:53'),
+(242, 2025, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x2458c58174fcb7f233cb20c8e8b37bc56d45af441c1e531870f7720b8f7c0135 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:52:53'),
+(243, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:53:08'),
+(244, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:53:18'),
+(245, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2025-020', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:53:51'),
+(246, 23, 'voter', 'LOGIN_SUCCESS', 'Voter logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 12:54:14'),
+(247, 2025, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x78dd3de94eb754ad874369888cbc47753bcf16011816f5a1a6a9cecff377b5a5 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 12:54:19'),
+(248, 2025, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0xd1b9d628d43d49f3b5860f479df44799952e5f0b7a07901db99c317a6d071b04 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 12:54:19'),
+(249, NULL, 'voter', 'LOGIN_FAILED', 'Failed login attempt for student ID: superadmin@voting.edu', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:55:05'),
+(250, NULL, 'voter', 'LOGIN_FAILED', 'Failed login attempt for student ID: superadmin@voting.edu', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:55:06'),
+(251, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:55:08'),
+(252, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 23', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:55:29'),
+(253, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 22', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 12:55:31'),
+(254, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2025-001', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 13:32:46'),
+(255, 24, 'voter', 'LOGIN_SUCCESS', 'Voter logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 13:33:06'),
+(256, 2025, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0xd19835ac09ee2ec67d71364cc18801d58f173b9d0d4230801c0402a2998f0f24 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 13:33:11');
+INSERT INTO `audit_logs` (`id`, `user_id`, `user_type`, `action`, `details`, `ip_address`, `user_agent`, `created_at`) VALUES
+(257, 2025, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x29ffc5a4f60b095665339c96c1ab4b70b4fdef9567e8c6e57b52396a1475473f (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 13:33:11'),
+(258, NULL, 'voter', 'LOGIN_FAILED', 'Failed login attempt for student ID: superadmin@voting.edu', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 13:33:26'),
+(259, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 13:33:29'),
+(260, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 13:36:10'),
+(261, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 24', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 13:36:35'),
+(262, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2025-032', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 13:36:52'),
+(263, 25, 'voter', 'LOGIN_SUCCESS', 'Voter logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 13:37:14'),
+(264, 2025, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0xe1650397ba0b865a66a250787da2066aa27550adeeae1a16e02616090c400cf9 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 13:37:18'),
+(265, 2025, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0xe46122fede9e76f3b75c176300201a057ee678e33cc9c9df0711a9923f5c0a63 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', '2025-10-29 13:37:18'),
+(266, NULL, 'voter', 'LOGIN_FAILED', 'Failed login attempt for student ID: superadmin@voting.edu', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 13:40:37'),
+(267, NULL, 'voter', 'LOGIN_FAILED', 'Failed login attempt for student ID: superadmin@voting.edu', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 13:40:37'),
+(268, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 13:40:42'),
+(269, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 25', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 13:40:58'),
+(270, 1, 'admin', 'CREATE_CANDIDATE', 'Created candidate: Servando Tio III', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 13:43:43'),
+(271, 1, 'admin', 'CREATE_CANDIDATE', 'Created candidate: Kenneth Dugaria', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 13:44:11'),
+(272, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:00:30'),
+(273, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2019-002', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:00:57'),
+(274, 26, 'voter', 'LOGIN_SUCCESS', 'Voter logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:01:14'),
+(275, 2019, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x61e338bd41c5ecf23da5fd709ea91bdda4d09c67da83a5cad7bea3d8b291d381 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:01:20'),
+(276, 2019, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x2c268583b3c6bafa8907d1a8f760c70b449d4d6040f980fc091f58b59d7a34cf (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:01:20'),
+(277, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:01:26'),
+(278, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:01:37'),
+(279, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2020-2001', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:02:10'),
+(280, 27, 'voter', 'LOGIN_SUCCESS', 'Voter logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:02:28'),
+(281, 2020, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x2261b4a5fc54d3a90fa8eca22ae87f3c8edc84530a6877f41ee0d91b94c0315c (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:02:36'),
+(282, 2020, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0xa4d7c83111cc5696ae8cae7cde4916985444782e5a01aebbca2f082b3d9b540a (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:02:36'),
+(283, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:02:44'),
+(284, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:03:54'),
+(285, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 27', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:22:28'),
+(286, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 26', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:22:30'),
+(287, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2018-2002', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:22:56'),
+(288, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2019-005', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:23:15'),
+(289, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2020-032', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:23:36'),
+(290, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2021-084', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:24:00'),
+(291, 31, 'voter', 'LOGIN_SUCCESS', 'Voter logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:24:22'),
+(292, 2021, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0xcc4eadce235bafe4985b45cc37b0fcb92cbe6eb393028879dc46a45f560b5e5e (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:24:27'),
+(293, 2021, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x6eddf1080814d5978ace1083f2f3a1d69c53daad557ee64b06ab2c1c85e91ad2 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:24:27'),
+(294, 28, 'voter', 'LOGIN_SUCCESS', 'Voter logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:24:39'),
+(295, 2018, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x91fdf4b1e6fe2cd054f82a2878d411f9de22bec955c7049e829bc943b88cb0fe (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:24:45'),
+(296, 2018, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x9393ae32a376d818cd12b6c36c74af705c959dbd67f8b8fe914999b37d8350e0 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:24:45'),
+(297, 29, 'voter', 'LOGIN_SUCCESS', 'Voter logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:24:59'),
+(298, 2019, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0xf73069069498bf6c187385225d138b55218c4066004ca6a091cb6570f21cae79 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:25:06'),
+(299, 2019, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x6c86d3a686ddfa6bc54ff168ab8ddc254d092342454e2a23a51022d1a4674674 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:25:06'),
+(300, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:25:12'),
+(301, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:25:39'),
+(302, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-29 14:27:03'),
+(303, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 31', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:29:39'),
+(304, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 30', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:29:41'),
+(305, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 29', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:29:43'),
+(306, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 28', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:29:44'),
+(307, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2020-001', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:30:04'),
+(308, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2021-002', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:30:20'),
+(309, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2022-003', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:30:39'),
+(310, 33, 'voter', 'LOGIN_SUCCESS', 'Voter logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:30:59'),
+(311, 2021, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x4822b318fb69c4367201ef1f815ffd4bdd0ec87532c9bea42c87f5d9988ccb13 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:31:04'),
+(312, 2021, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0xf2a8f6cacfaa955b73ea4f9ebf5f2cdd2f37bb672a577928aeadb962a3bea05f (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:31:04'),
+(313, 34, 'voter', 'LOGIN_SUCCESS', 'Voter logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:31:16'),
+(314, 2022, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x9dc6a99c439a74f29852e45537006a03d8404440dd9002546e7ce13f22477d99 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:31:21'),
+(315, 2022, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x1fe567a5fab02c0ff8e5aa0f96bdc88f08c38a0bb01eee7ce39417e478399fb8 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:31:21'),
+(316, 32, 'voter', 'LOGIN_SUCCESS', 'Voter logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:31:32'),
+(317, 2020, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0xbd4f18fa8da9d54a12cc00e606d4d1912f363d71546a455b8d3a85c0d4a73c90 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:31:36'),
+(318, 2020, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x89b35a579dfba508f11703a15836f464a991697b4859e064a5a6cb675a6cfd73 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:31:36'),
+(319, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:31:43'),
+(320, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:31:49'),
+(321, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:32:23'),
+(322, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:33:12'),
+(323, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:41:22'),
+(324, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 34', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:41:28'),
+(325, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 33', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:41:29'),
+(326, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 32', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:41:31'),
+(327, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2019-001', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:41:47'),
+(328, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2022-042', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:42:05'),
+(329, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2018-201', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:42:23'),
+(330, 35, 'voter', 'LOGIN_SUCCESS', 'Voter logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:42:39'),
+(331, 2019, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0xc035b37db196e5e7df3a778950e0b56fe11d497a86cda8c105262df3ae56e666 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:42:45'),
+(332, 2019, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x9f3debaadd1fddad3c2b75c3271713fcc4eec98ca94eb0280bc35b05da18c10a (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:42:45'),
+(333, 36, 'voter', 'LOGIN_SUCCESS', 'Voter logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:42:57'),
+(334, 2022, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0xc0479ca8669043648361baa7821ba67eb8c42ddf02f598e094b71077aa731ff2 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:43:02'),
+(335, 2022, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0xc1ecd266d5a011ce233533fb8fe326792c73157585b7805b350f6769cfa638ff (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:43:02'),
+(336, 37, 'voter', 'LOGIN_SUCCESS', 'Voter logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:43:14'),
+(337, 2018, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x655288938c6f6adc3657139ad1d9e2b082bf738658d4fe89b6b64995e02d2519 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:43:22'),
+(338, 2018, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x031c227c29d141901880554653215a9a576e4cb3155235b6c9356e83f45c5a87 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:43:22'),
+(339, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:43:29'),
+(340, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:44:00'),
+(341, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 37', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:48:20'),
+(342, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 36', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:48:21'),
+(343, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 35', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:48:23'),
+(344, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2020-101', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:49:58'),
+(345, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2022-1002', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:50:17'),
+(346, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:50:24'),
+(347, 39, 'voter', 'LOGIN_SUCCESS', 'Voter logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:50:50'),
+(348, 2022, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x2f5a76ee1c37450a743d637988a0060c96fe54480a5ac276c65c987a5c51c019 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:50:56'),
+(349, 2022, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x5d91d50d83645b62392b9292f84005e6e186b36d39d3d8e0af3110f71a6da988 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:50:56'),
+(350, 38, 'voter', 'LOGIN_SUCCESS', 'Voter logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:51:09'),
+(351, 2020, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0xcc9c0e1978ce4e414db1c99bf366a370acd769176d9145acecefca4749a0d6a2 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:51:16'),
+(352, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:51:23'),
+(353, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:51:42'),
+(354, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 39', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:56:53'),
+(355, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 38', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:56:55'),
+(356, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2025-002', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:57:11'),
+(357, NULL, 'voter', 'LOGIN_FAILED', 'Failed login attempt for student ID: 2020-101', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:57:34'),
+(358, 40, 'voter', 'LOGIN_SUCCESS', 'Voter logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:57:47'),
+(359, 2025, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0xe5084d6f422fc38d0e36c9b1d14aa36ca19ee46a85c6199ac42767e093038bb9 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:57:52'),
+(360, 2025, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x70bfb5037c493f76524ab7d82507fe8772d07478443ae1b86b967c10ee3b53e5 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:57:52'),
+(361, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-10-30 14:57:59'),
+(362, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 40', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:25:26'),
+(363, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2025-001', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:25:46'),
+(364, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2024-002', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:26:02'),
+(365, 42, 'voter', 'LOGIN_SUCCESS', 'Voter logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:26:24'),
+(366, 2024, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0xa95319d654064b9bc66e9c11004f3df67e7a9a9d122937d827fc77fb35427241 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:26:31'),
+(367, 2024, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x831f1a9dc25b2cf10790108291617f89a0f2a3372d612d7d3d8effeb3805020d (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:26:31'),
+(368, 41, 'voter', 'LOGIN_SUCCESS', 'Voter logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:26:44'),
+(369, 2025, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x22db008b68bcb1a703b8b7e774f11699482dddf030e3f9888b2bb9a9b0d54b43 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:26:48'),
+(370, 2025, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x059241950a872136131d6b6cbc769ba697f41909d93bbd66ea1ff96a7c7da47f (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:26:48'),
+(371, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:26:56'),
+(372, 0, 'admin', 'UPDATE_ADMIN', 'Updated admin ID: 4', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:27:48'),
+(373, 4, 'admin', 'LOGIN_SUCCESS', 'Admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:27:59'),
+(374, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:28:17'),
+(375, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2023-007', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:28:40'),
+(376, 43, 'voter', 'LOGIN_SUCCESS', 'Voter logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:29:04'),
+(377, 2023, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0xcc47c6a58e6f1345f187a2fc65153b41472c1a9e8eded8443e23067dec9a79b2 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:29:08'),
+(378, 2023, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0xa9164f37cb6fede9326df7a33304b417be68c3cb7296e6025f2d5fc8e349ea14 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:29:08'),
+(379, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:29:16'),
+(380, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:29:43'),
+(381, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 43', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:29:51'),
+(382, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 42', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:29:52'),
+(383, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 41', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:29:54'),
+(384, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:32:41'),
+(385, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2025-003', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:33:03'),
+(386, 44, 'voter', 'LOGIN_SUCCESS', 'Voter logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:33:23'),
+(387, 2025, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x0850e1d4b8292da352a38454ce0a1519f852e1bdd7c6be2b7253fc78b639500e (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:33:29'),
+(388, 2025, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0xaffb49e89caf1bc1ad1a631215c74b0c25529e20ac8b1e08684d16690fd1bc30 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:33:29'),
+(389, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:33:36'),
+(390, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:35:10'),
+(391, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:36:33'),
+(392, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:41:37'),
+(393, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 44', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:41:49'),
+(394, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2025-001', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:44:21'),
+(395, 45, 'voter', 'LOGIN_SUCCESS', 'Voter logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:45:01'),
+(396, 2025, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x78fb44f2b9725c299a8df44b763906e6a01350489d04316c9d4473bc3213e405 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:45:06'),
+(397, 2025, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x1a458248168615e9f816e85eb39cb909e394a5f2f18f8ab66de4788f66705b12 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:45:06'),
+(398, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0', '2025-11-06 02:45:15'),
+(399, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0', '2025-11-10 06:46:37'),
+(400, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 45', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0', '2025-11-10 06:46:44'),
+(401, 0, 'admin', 'LOGIN_SUCCESS', 'Super admin logged in', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0', '2025-11-10 07:04:41'),
+(402, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2025-001', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0', '2025-11-10 07:06:41'),
+(403, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2020-023', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0', '2025-11-10 07:07:17'),
+(404, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2024-045', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0', '2025-11-10 07:07:47'),
+(405, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 48', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0', '2025-11-10 07:07:59'),
+(406, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 47', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0', '2025-11-10 07:07:59'),
+(407, 1, 'admin', 'DELETE_VOTER', 'Deleted voter ID: 46', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0', '2025-11-10 07:07:59'),
+(408, 1, 'admin', 'CREATE_VOTER', 'Created voter: 2025-123', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0', '2025-11-10 07:08:31'),
+(409, 1, 'admin', 'START_POLL', 'Poll status updated', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0', '2025-11-10 08:19:50'),
+(410, 1, 'admin', 'PAUSE_POLL', 'Poll status updated', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0', '2025-11-10 08:23:13'),
+(411, 1, 'admin', 'START_POLL', 'Poll status updated', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0', '2025-11-10 08:23:23'),
+(412, 1, 'admin', 'PAUSE_POLL', 'Poll status updated', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0', '2025-11-10 08:26:39'),
+(413, 1, 'admin', 'START_POLL', 'Poll status updated', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0', '2025-11-10 08:34:04'),
+(414, 0, 'admin', 'UPDATE_ADMIN', 'Updated admin ID: 4', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0', '2025-11-10 08:39:31'),
+(415, 0, 'admin', 'UPDATE_ADMIN', 'Updated admin ID: 3', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0', '2025-11-10 08:40:10'),
+(416, 1, 'admin', 'PAUSE_POLL', 'Poll status updated', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0', '2025-11-10 08:54:46'),
+(417, 1, 'admin', 'START_POLL', 'Poll status updated', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0', '2025-11-10 08:55:03'),
+(418, 2025, 'voter', 'DECENTRALIZED_VOTE_CAST', 'Vote cast on decentralized Ethereum blockchain. TX: 0x2bf4164bebfe86f2e54d00897b0fbf4c2c78f4627ee241c0ca16d8e7de654bb3 (Node: simulation)', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36', '2025-11-10 09:10:30');
 
 -- --------------------------------------------------------
 
@@ -243,7 +480,9 @@ INSERT INTO `candidates` (`id`, `name`, `party`, `position`, `image_url`, `vote_
 (5, 'Joshua Tan', 'MGA GWAPO GENGGENG', 'President', NULL, 3, '2025-09-23 08:22:16', '2025-10-29 06:58:39', 1),
 (6, 'Royal Hanz Caca', 'Lets Go serrr', 'Vice President', NULL, 2, '2025-10-29 06:57:05', '2025-10-29 06:58:39', 1),
 (7, 'June Lian Jazel Tampos', 'WOWERSS', 'Vice President', NULL, 0, '2025-10-29 06:57:22', '2025-10-29 06:57:22', 1),
-(8, 'Mharlou Escobido', 'MGA GWAPO GENGGENG', 'Vice President', NULL, 0, '2025-10-29 06:57:42', '2025-10-29 06:57:42', 1);
+(8, 'Mharlou Escobido', 'MGA GWAPO GENGGENG', 'Vice President', NULL, 0, '2025-10-29 06:57:42', '2025-10-29 06:57:42', 1),
+(9, 'Servando Tio III', 'PURE GWAPO PARTY', 'Senator', NULL, 0, '2025-10-29 13:43:43', '2025-10-29 13:43:43', 1),
+(10, 'Kenneth Dugaria', 'Way Makapilde Sa Ka Gwapo', 'Senator', NULL, 0, '2025-10-29 13:44:11', '2025-10-29 13:44:11', 1);
 
 -- --------------------------------------------------------
 
@@ -289,22 +528,20 @@ INSERT INTO `courses` (`id`, `name`, `code`, `is_active`, `created_at`, `updated
 --
 
 CREATE TABLE `poll_settings` (
-  `id` int(11) NOT NULL,
+  `id` int(11) NOT NULL DEFAULT 1,
   `is_active` tinyint(1) DEFAULT 0,
-  `start_time` timestamp NULL DEFAULT NULL,
-  `end_time` timestamp NULL DEFAULT NULL,
   `is_paused` tinyint(1) DEFAULT 0,
-  `paused_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `start_time` datetime DEFAULT NULL,
+  `end_time` datetime DEFAULT NULL,
+  `paused_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `poll_settings`
 --
 
-INSERT INTO `poll_settings` (`id`, `is_active`, `start_time`, `end_time`, `is_paused`, `paused_at`, `created_at`, `updated_at`) VALUES
-(1, 1, NULL, NULL, 0, NULL, '2025-09-22 00:44:28', '2025-10-29 08:35:57');
+INSERT INTO `poll_settings` (`id`, `is_active`, `is_paused`, `start_time`, `end_time`, `paused_at`) VALUES
+(1, 1, 0, '2025-11-10 08:55:03', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -394,13 +631,13 @@ ALTER TABLE `admins`
 -- AUTO_INCREMENT for table `audit_logs`
 --
 ALTER TABLE `audit_logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=183;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=419;
 
 --
 -- AUTO_INCREMENT for table `candidates`
 --
 ALTER TABLE `candidates`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `courses`
@@ -409,16 +646,10 @@ ALTER TABLE `courses`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=59;
 
 --
--- AUTO_INCREMENT for table `poll_settings`
---
-ALTER TABLE `poll_settings`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
-
---
 -- AUTO_INCREMENT for table `voters`
 --
 ALTER TABLE `voters`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=50;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

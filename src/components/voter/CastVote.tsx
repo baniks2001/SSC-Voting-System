@@ -212,6 +212,7 @@ export const CastVote: React.FC<CastVoteProps> = ({ onVoteCast, onShowReceipt, o
                             {candidate.manifesto && (
                               <p className="text-gray-700 text-xs mt-1 line-clamp-1">
                                 {candidate.manifesto}
+                                  
                               </p>
                             )}
                           </div>
@@ -247,8 +248,8 @@ export const CastVote: React.FC<CastVoteProps> = ({ onVoteCast, onShowReceipt, o
             </div>
             <button
               onClick={handleReviewVote}
+              className="flex items-center space-x-2 bg-blue-800 hover:bg-blue-900 text-white py-3 px-5 rounded-lg transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={Object.keys(selectedVotes).length !== positionsWithCandidates.length}
-              className="w-full sm:w-auto bg-blue-800 hover:bg-blue-900 disabled:bg-gray-400 text-white py-3 px-6 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center justify-center space-x-2"
             >
               <span>Review Vote</span>
               <ArrowRight className="w-4 h-4" />

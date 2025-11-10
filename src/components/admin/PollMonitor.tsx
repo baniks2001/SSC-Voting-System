@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Monitor,
   Maximize,
@@ -13,7 +13,8 @@ import {
   AlertTriangle,
   Eye,
   RefreshCw,
-  Cpu
+  Cpu,
+  Download
 } from 'lucide-react';
 import { PollResults, PollSettings } from '../../types';
 import { api } from '../../utils/api';
@@ -34,6 +35,13 @@ interface Candidate {
   vote_count?: number;
 }
 
+interface BlockchainNode {
+  url: string;
+  priority: number;
+  isActive: boolean;
+  lastChecked: number;
+}
+
 export const PollMonitor: React.FC<PollMonitorProps> = ({ isReadOnly = false }) => {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [totalVotes, setTotalVotes] = useState<number>(0);
@@ -43,80 +51,109 @@ export const PollMonitor: React.FC<PollMonitorProps> = ({ isReadOnly = false }) 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [currentNodeIndex, setCurrentNodeIndex] = useState(0);
+  const [nodes, setNodes] = useState<BlockchainNode[]>([
+    { url: '/voting/results', priority: 1, isActive: true, lastChecked: Date.now() },
+    { url: '/voting/fallback-results', priority: 2, isActive: true, lastChecked: Date.now() }
+  ]);
   const { showToast } = useToast();
 
-  useEffect(() => {
-    fetchData();
+  // Memoized blockchain node configuration
+  const blockchainNodes = useMemo(() => [
+    { url: '/voting/results', priority: 1 },
+    { url: '/voting/fallback-results', priority: 2 }
+  ], []);
 
-    let interval: NodeJS.Timeout;
-    if (autoRefresh) {
-      interval = setInterval(fetchData, 5000); // Refresh every 5 seconds
+  // Optimized data fetching with failover
+  const fetchBlockchainData = useCallback(async (nodeIndex: number): Promise<any> => {
+    const node = blockchainNodes[nodeIndex];
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+      const response = await api.get(node.url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      // Update node status
+      setNodes(prev => prev.map((n, i) => 
+        i === nodeIndex ? { ...n, isActive: true, lastChecked: Date.now() } : n
+      ));
+
+      return response;
+    } catch (error) {
+      console.warn(`Node ${nodeIndex} failed:`, error);
+      
+      // Mark node as inactive
+      setNodes(prev => prev.map((n, i) => 
+        i === nodeIndex ? { ...n, isActive: false, lastChecked: Date.now() } : n
+      ));
+
+      // Try next node if available
+      const nextNodeIndex = (nodeIndex + 1) % blockchainNodes.length;
+      if (nextNodeIndex !== nodeIndex) {
+        showToast('warning', `Switching to backup node ${nextNodeIndex + 1}`);
+        return await fetchBlockchainData(nextNodeIndex);
+      }
+
+      throw new Error('All blockchain nodes failed');
     }
+  }, [blockchainNodes, showToast]);
 
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [autoRefresh]);
+  // Optimized data fetching with performance improvements
+  const fetchData = useCallback(async () => {
+    if (refreshing) return;
 
-  const fetchData = async () => {
     try {
       setRefreshing(true);
       
-      // Fetch data from multiple endpoints
-      const [candidatesResponse, blockchainResultsResponse, settingsResponse, blockchainStatusResponse] = await Promise.all([
-        api.get('/candidates'), // SQL candidates
-        api.get('/voting/results'), // Blockchain votes
-        api.get('/poll/status'), // Poll settings
-        api.get('/voting/blockchain-status').catch(() => null) // Blockchain status
+      // Use Promise.allSettled to prevent complete failure if one endpoint fails
+      const [candidatesResponse, blockchainResultsResponse, settingsResponse] = await Promise.allSettled([
+        api.get('/candidates'),
+        fetchBlockchainData(currentNodeIndex),
+        api.get('/poll/status')
       ]);
 
-      console.log('📊 Poll Monitor Data:', {
-        candidates: candidatesResponse,
-        blockchainResults: blockchainResultsResponse,
-        blockchainStatus: blockchainStatusResponse
-      });
-
-      // Process candidates from SQL
-      const sqlCandidates = Array.isArray(candidatesResponse) 
-        ? candidatesResponse 
-        : candidatesResponse?.candidates || candidatesResponse?.data || [];
-
-      // Process vote counts from blockchain
-      let blockchainVotes = 0;
-      const candidateVoteCounts: { [candidateId: string]: number } = {};
-
-      if (blockchainResultsResponse && blockchainResultsResponse.success) {
-        // If the response has the new combined structure
-        blockchainVotes = blockchainResultsResponse.totalVotes || 0;
-        
-        // Map vote counts to candidates
-        if (blockchainResultsResponse.candidates && Array.isArray(blockchainResultsResponse.candidates)) {
-          blockchainResultsResponse.candidates.forEach((candidate: any) => {
-            if (candidate.id && candidate.vote_count !== undefined) {
-              candidateVoteCounts[candidate.id] = candidate.vote_count;
-            }
-          });
-        }
-      } else if (blockchainResultsResponse && Array.isArray(blockchainResultsResponse.candidates)) {
-        // If the response has the old structure
-        blockchainResultsResponse.candidates.forEach((candidate: any) => {
-          if (candidate.id && candidate.vote_count !== undefined) {
-            candidateVoteCounts[candidate.id] = candidate.vote_count;
-            blockchainVotes += candidate.vote_count || 0;
-          }
-        });
+      // Process candidates
+      if (candidatesResponse.status === 'fulfilled') {
+        const sqlCandidates = Array.isArray(candidatesResponse.value) 
+          ? candidatesResponse.value 
+          : candidatesResponse.value?.candidates || candidatesResponse.value?.data || [];
+        setCandidates(sqlCandidates);
       }
 
-      // Combine SQL candidates with blockchain vote counts
-      const combinedCandidates = sqlCandidates.map((candidate: any) => ({
-        ...candidate,
-        vote_count: candidateVoteCounts[candidate.id] || 0
-      }));
+      // Process blockchain results
+      if (blockchainResultsResponse.status === 'fulfilled') {
+        const blockchainData = blockchainResultsResponse.value;
+        let blockchainVotes = 0;
+        const candidateVoteCounts: { [candidateId: string]: number } = {};
 
-      setCandidates(combinedCandidates);
-      setTotalVotes(blockchainVotes);
-      setPollSettings(settingsResponse);
-      setBlockchainInfo(blockchainStatusResponse);
+        if (blockchainData && blockchainData.success) {
+          blockchainVotes = blockchainData.totalVotes || 0;
+          if (blockchainData.candidates && Array.isArray(blockchainData.candidates)) {
+            blockchainData.candidates.forEach((candidate: any) => {
+              if (candidate.id && candidate.vote_count !== undefined) {
+                candidateVoteCounts[candidate.id] = candidate.vote_count;
+              }
+            });
+          }
+        }
+
+        setTotalVotes(blockchainVotes);
+        setCandidates(prev => prev.map(candidate => ({
+          ...candidate,
+          vote_count: candidateVoteCounts[candidate.id] || 0
+        })));
+      }
+
+      // Process settings
+      if (settingsResponse.status === 'fulfilled') {
+        setPollSettings(settingsResponse.value);
+      }
+
+      // Fetch blockchain status separately to not block main data
+      api.get('/voting/blockchain-status')
+        .then(setBlockchainInfo)
+        .catch(() => setBlockchainInfo(null));
 
     } catch (error: any) {
       console.error('Failed to fetch poll data:', error);
@@ -125,9 +162,24 @@ export const PollMonitor: React.FC<PollMonitorProps> = ({ isReadOnly = false }) 
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [refreshing, currentNodeIndex, fetchBlockchainData, showToast]);
 
-  const handlePollControl = async (action: 'start' | 'pause' | 'resume' | 'stop') => {
+  // Optimized useEffect with cleanup
+  useEffect(() => {
+    fetchData();
+
+    let interval: NodeJS.Timeout;
+    if (autoRefresh) {
+      interval = setInterval(fetchData, 5000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [autoRefresh, fetchData]);
+
+  // Memoized poll control handler
+  const handlePollControl = useCallback(async (action: 'start' | 'pause' | 'resume' | 'stop') => {
     if (isReadOnly) return;
 
     try {
@@ -166,9 +218,10 @@ export const PollMonitor: React.FC<PollMonitorProps> = ({ isReadOnly = false }) 
       console.error(`Failed to ${action} poll:`, error);
       showToast('error', `Failed to ${action} poll`);
     }
-  };
+  }, [isReadOnly, showToast, fetchData]);
 
-  const handleReset = async () => {
+  // Optimized reset handler
+  const handleReset = useCallback(async () => {
     if (isReadOnly) {
       showToast('warning', 'Read-only mode: Cannot reset poll');
       return;
@@ -191,15 +244,11 @@ export const PollMonitor: React.FC<PollMonitorProps> = ({ isReadOnly = false }) 
     try {
       const response = await api.post('/poll/reset', {});
 
-      if (response && typeof response === 'object') {
-        if (response.success !== undefined) {
-          if (response.success) {
-            showToast('success', response.message || 'Poll reset successfully');
-          } else {
-            throw new Error(response.message || 'Reset failed');
-          }
+      if (response && typeof response === 'object' && response.success !== undefined) {
+        if (response.success) {
+          showToast('success', response.message || 'Poll reset successfully');
         } else {
-          showToast('success', 'Poll reset successfully');
+          throw new Error(response.message || 'Reset failed');
         }
       } else {
         showToast('success', 'Poll reset successfully');
@@ -209,7 +258,6 @@ export const PollMonitor: React.FC<PollMonitorProps> = ({ isReadOnly = false }) 
 
     } catch (error: any) {
       console.error('Reset poll error:', error);
-
       let errorMessage = 'Failed to reset poll. Please try again.';
 
       if (error instanceof Error) {
@@ -220,40 +268,79 @@ export const PollMonitor: React.FC<PollMonitorProps> = ({ isReadOnly = false }) 
         errorMessage = error.error;
       }
 
-      if (errorMessage.includes('HTTP 401')) {
-        errorMessage = 'Authentication required to reset poll';
-      } else if (errorMessage.includes('HTTP 403')) {
-        errorMessage = 'You do not have permission to reset the poll';
-      } else if (errorMessage.includes('HTTP 404')) {
-        errorMessage = 'Reset endpoint not found';
-      } else if (errorMessage.includes('HTTP 500')) {
-        errorMessage = 'Server error during reset';
-      }
-
       showToast('error', `Reset failed: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
-  };
+  }, [isReadOnly, showToast, fetchData]);
 
-  const toggleFullscreen = () => {
+  // Export votes functionality
+  const exportVotes = useCallback(() => {
+    try {
+      const exportData = {
+        exportDate: new Date().toISOString(),
+        totalVotes,
+        candidates: candidates.map(candidate => ({
+          id: candidate.id,
+          name: candidate.name,
+          party: candidate.party,
+          position: candidate.position_name || candidate.position,
+          votes: candidate.vote_count || 0,
+          percentage: totalVotes > 0 ? ((candidate.vote_count || 0) / totalVotes * 100).toFixed(2) : '0.00'
+        })),
+        pollStatus: {
+          isActive: pollSettings?.is_active,
+          isPaused: pollSettings?.is_paused
+        },
+        blockchainInfo: {
+          connectedNodes: blockchainInfo?.connectedNodes,
+          totalNodes: blockchainInfo?.totalNodes,
+          currentBlock: blockchainInfo?.blockNumber,
+          simulationMode: blockchainInfo?.simulationMode
+        }
+      };
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { 
+        type: 'application/json' 
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `poll-results-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      showToast('success', 'Votes exported successfully');
+    } catch (error) {
+      console.error('Export failed:', error);
+      showToast('error', 'Failed to export votes');
+    }
+  }, [candidates, totalVotes, pollSettings, blockchainInfo, showToast]);
+
+  const toggleFullscreen = useCallback(() => {
     setIsFullscreen(!isFullscreen);
-  };
+  }, [isFullscreen]);
 
-  const getVotePercentage = (voteCount: number, totalVotes: number) => {
+  // Memoized vote percentage calculation
+  const getVotePercentage = useCallback((voteCount: number, totalVotes: number) => {
     if (totalVotes === 0) return 0;
     return Math.round((voteCount / totalVotes) * 100);
-  };
+  }, []);
 
-  // Group candidates by position
-  const groupedCandidates = candidates.reduce((acc, candidate) => {
-    const position = candidate.position_name || candidate.position || 'Unknown Position';
-    if (!acc[position]) {
-      acc[position] = [];
-    }
-    acc[position].push(candidate);
-    return acc;
-  }, {} as Record<string, Candidate[]>);
+  // Memoized candidate grouping
+  const groupedCandidates = useMemo(() => 
+    candidates.reduce((acc, candidate) => {
+      const position = candidate.position_name || candidate.position || 'Unknown Position';
+      if (!acc[position]) {
+        acc[position] = [];
+      }
+      acc[position].push(candidate);
+      return acc;
+    }, {} as Record<string, Candidate[]>),
+    [candidates]
+  );
 
   if (loading) {
     return (
@@ -305,6 +392,14 @@ export const PollMonitor: React.FC<PollMonitorProps> = ({ isReadOnly = false }) 
             <span>Refresh</span>
           </button>
 
+          <button
+            onClick={exportVotes}
+            className="btn-success btn-sm flex items-center space-x-1"
+          >
+            <Download className="w-4 h-4" />
+            <span>Export</span>
+          </button>
+
           <label className="flex items-center space-x-2 text-sm">
             <input
               type="checkbox"
@@ -323,7 +418,7 @@ export const PollMonitor: React.FC<PollMonitorProps> = ({ isReadOnly = false }) 
             {isFullscreen ? (
               <>
                 <Minimize className="w-4 h-4" />
-                <span>Exit Fullscreen</span>
+                <span>Exit</span>
               </>
             ) : (
               <>
@@ -335,131 +430,76 @@ export const PollMonitor: React.FC<PollMonitorProps> = ({ isReadOnly = false }) 
         </div>
       </div>
 
-      {/* Blockchain Status */}
-      {blockchainInfo && (
-        <div className="card">
-          <div className="card-header">
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-              <Cpu className="w-5 h-5 mr-2 text-indigo-600" />
-              Blockchain Network Status
-            </h2>
-          </div>
-          <div className="card-body">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-blue-800 text-sm font-medium">Network</p>
-                    <p className={`text-lg font-bold ${blockchainInfo.isConnected ? 'text-green-600' : 'text-red-600'}`}>
-                      {blockchainInfo.isConnected ? 'Connected' : 'Disconnected'}
-                    </p>
-                  </div>
-                  <Cpu className={`w-6 h-6 ${blockchainInfo.isConnected ? 'text-green-500' : 'text-red-500'}`} />
-                </div>
-              </div>
-
-              <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+      {/* Blockchain Status with Failover Info */}
+      <div className="card">
+        <div className="card-header">
+          <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+            <Cpu className="w-5 h-5 mr-2 text-indigo-600" />
+            Blockchain Network Status
+            {nodes.some(node => !node.isActive) && (
+              <span className="ml-2 px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded">
+                Failover Active
+              </span>
+            )}
+          </h2>
+        </div>
+        <div className="card-body">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+              <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-purple-800 text-sm font-medium">Connected Nodes</p>
-                  <p className="text-lg font-bold text-purple-600">
-                    {blockchainInfo.connectedNodes || 0}/{blockchainInfo.totalNodes || 0}
+                  <p className="text-blue-800 text-sm font-medium">Network</p>
+                  <p className={`text-lg font-bold ${blockchainInfo?.isConnected ? 'text-green-600' : 'text-red-600'}`}>
+                    {blockchainInfo?.isConnected ? 'Connected' : 'Disconnected'}
                   </p>
                 </div>
-                <p className="text-xs text-purple-600 mt-1">Active nodes</p>
+                <Cpu className={`w-6 h-6 ${blockchainInfo?.isConnected ? 'text-green-500' : 'text-red-500'}`} />
               </div>
+            </div>
 
-              <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-                <div>
-                  <p className="text-green-800 text-sm font-medium">Current Block</p>
-                  <p className="text-lg font-bold text-green-600">
-                    #{blockchainInfo.blockNumber || 'N/A'}
-                  </p>
-                </div>
-                <p className="text-xs text-green-600 mt-1">Latest block</p>
-              </div>
-
-              <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
-                <div>
-                  <p className="text-orange-800 text-sm font-medium">Storage Mode</p>
-                  <p className="text-lg font-bold text-orange-600">
-                    {blockchainInfo.simulationMode ? 'Simulation' : 'Live'}
-                  </p>
-                </div>
-                <p className="text-xs text-orange-600 mt-1">
-                  {blockchainInfo.simulationMode ? 'Test environment' : 'Production'}
+            <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+              <div>
+                <p className="text-purple-800 text-sm font-medium">Active Node</p>
+                <p className="text-lg font-bold text-purple-600">
+                  Node {currentNodeIndex + 1}
                 </p>
               </div>
+              <p className="text-xs text-purple-600 mt-1">
+                {nodes[currentNodeIndex]?.isActive ? 'Primary' : 'Backup'}
+              </p>
+            </div>
+
+            <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+              <div>
+                <p className="text-green-800 text-sm font-medium">Connected Nodes</p>
+                <p className="text-lg font-bold text-green-600">
+                  {blockchainInfo?.connectedNodes || 0}/{blockchainInfo?.totalNodes || 0}
+                </p>
+              </div>
+              <p className="text-xs text-green-600 mt-1">Active nodes</p>
+            </div>
+
+            <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+              <div>
+                <p className="text-orange-800 text-sm font-medium">Current Block</p>
+                <p className="text-lg font-bold text-orange-600">
+                  #{blockchainInfo?.blockNumber || 'N/A'}
+                </p>
+              </div>
+              <p className="text-xs text-orange-600 mt-1">Latest block</p>
+            </div>
+            <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+              <div>
+                <p className="text-red-800 text-sm font-medium">Total Nodes</p>
+                <p className="text-lg font-bold text-red-600">
+                  {blockchainInfo?.totalNodes || 0}
+                </p>
+              </div>
+              <p className="text-xs text-red-600 mt-1">Active nodes</p>
             </div>
           </div>
         </div>
-      )}
-
-      {/* Control Panel - Only show for non-readonly users */}
-      {!isReadOnly && (
-        <div className="card">
-          <div className="card-header">
-            <h2 className="text-lg font-semibold text-gray-900">Poll Controls</h2>
-          </div>
-          <div className="card-body">
-            <div className="flex items-center justify-center space-x-4">
-              {!pollSettings?.is_active ? (
-                <button
-                  onClick={() => handlePollControl('start')}
-                  className="btn-success flex items-center space-x-2"
-                >
-                  <Play className="w-5 h-5" />
-                  <span>Start Poll</span>
-                </button>
-              ) : pollSettings?.is_paused ? (
-                <button
-                  onClick={() => handlePollControl('resume')}
-                  className="btn-success flex items-center space-x-2"
-                >
-                  <Play className="w-5 h-5" />
-                  <span>Resume Poll</span>
-                </button>
-              ) : (
-                <button
-                  onClick={() => handlePollControl('pause')}
-                  className="btn-warning flex items-center space-x-2"
-                >
-                  <Pause className="w-5 h-5" />
-                  <span>Pause Poll</span>
-                </button>
-              )}
-
-              {pollSettings?.is_active && (
-                <button
-                  onClick={() => handlePollControl('stop')}
-                  className="btn-danger flex items-center space-x-2"
-                >
-                  <X className="w-5 h-5" />
-                  <span>Stop Poll</span>
-                </button>
-              )}
-
-              <button
-                onClick={handleReset}
-                disabled={loading}
-                className={`btn-danger flex items-center space-x-2 ${loading ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
-              >
-                {loading ? (
-                  <>
-                    <LoadingSpinner size="sm" />
-                    <span>Resetting...</span>
-                  </>
-                ) : (
-                  <>
-                    <RotateCcw className="w-5 h-5" />
-                    <span>Reset Poll</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
 
       {/* Statistics */}
       <div className="responsive-grid">
@@ -536,6 +576,7 @@ export const PollMonitor: React.FC<PollMonitorProps> = ({ isReadOnly = false }) 
                               src={candidate.image_url || `https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg?auto=compress&cs=tinysrgb&w=60&h=60&fit=crop`}
                               alt={candidate.name}
                               className="candidate-image-sm"
+                              loading="lazy"
                             />
                             <div>
                               <p className="font-medium text-gray-900 flex items-center space-x-2">
@@ -575,21 +616,6 @@ export const PollMonitor: React.FC<PollMonitorProps> = ({ isReadOnly = false }) 
         </div>
       )}
 
-      {candidates.length > 0 && totalVotes === 0 && (
-        <div className="card">
-          <div className="card-body text-center py-12">
-            <AlertTriangle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Votes Yet</h3>
-            <p className="text-gray-600">
-              {blockchainInfo?.isConnected 
-                ? 'Votes will appear here once students start voting on the blockchain.'
-                : 'Waiting for blockchain connection and votes.'
-              }
-            </p>
-          </div>
-        </div>
-      )}
-
       <div className="text-center text-sm text-gray-500">
         Last updated: {new Date().toLocaleString()}
         {isReadOnly && <span className="ml-2 text-blue-600">• View Only Mode</span>}
@@ -597,6 +623,9 @@ export const PollMonitor: React.FC<PollMonitorProps> = ({ isReadOnly = false }) 
           <span className="ml-2 text-indigo-600">
             • {blockchainInfo.simulationMode ? 'Blockchain Simulation' : 'Live Blockchain'}
           </span>
+        )}
+        {nodes.some(node => !node.isActive) && (
+          <span className="ml-2 text-yellow-600">• Failover Active</span>
         )}
       </div>
     </div>
@@ -630,11 +659,18 @@ export const PollMonitor: React.FC<PollMonitorProps> = ({ isReadOnly = false }) 
           </div>
           <div className="fullscreen-controls">
             <button
+              onClick={exportVotes}
+              className="btn-success btn-sm flex items-center space-x-1 mr-2"
+            >
+              <Download className="w-4 h-4" />
+              <span>Export</span>
+            </button>
+            <button
               onClick={toggleFullscreen}
               className="btn-secondary btn-sm flex items-center space-x-1"
             >
               <Minimize className="w-4 h-4" />
-              <span>Exit Fullscreen</span>
+              <span>Exit</span>
             </button>
           </div>
         </div>
@@ -645,9 +681,5 @@ export const PollMonitor: React.FC<PollMonitorProps> = ({ isReadOnly = false }) 
     );
   }
 
-  return (
-    <div className="animate-fadeIn">
-      {content}
-    </div>
-  );
+  return <div>{content}</div>;
 };

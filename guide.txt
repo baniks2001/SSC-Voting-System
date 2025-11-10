@@ -1,30 +1,77 @@
-install node.js first before doing this guide
+Complete Installation Guide
+Step 1: Install Node.js
+    Option 1: Download from Official Website
 
+    Go to Node.js official website
 
-Guide:
-new terminal
-npm install
+    Download the LTS (Long Term Support) version for your operating system
 
+    Run the installer and follow the setup wizard
 
-for the server
-    cd server
-    npm install
+    Option 2: Using Node Version Manager (Recommended for advanced users)
 
+    Windows: nvm-windows
 
-create .env and paste the environmental.txt in the .env
+    macOS/Linux: nvm
 
-node 1 start
-    cd Blockchain
-    ./start-node1.sh
+    Verify Installation:
 
-    just copy paste below in the terminal same sa the node 1 and enter
-    geth --datadir node2 --networkid 1337 --port 30304 --http --http.port 8547 --http.addr 0.0.0.0 --http.corsdomain "*" --http.api "web3,eth,net,personal,admin" --ipcdisable --authrpc.port 8552 console
+    Open Gitbash or Terminal
+    node --version
+    npm --version
 
-to run the system
-new terminal
-    npm run dev
+    Step 2: Project Setup
+    1. Open terminal/command prompt in your project root directory
+    2. Install root dependencies:
+        npm install
+    3. Navigate to server directory and install server dependencies:
+        cd server
+        npm install
+        cd ..
 
-to run the server
-new terminal
-    cd server
-        npm run dev
+    Step 3: Environment Configuration
+    1. Create .env file in the root directory:
+        # On Linux/macOS
+        touch .env
+
+        # On Windows (Command Prompt)
+        type nul > .env
+
+        # On Windows (PowerShell)
+        New-Item .env -ItemType File
+
+    2. Copy contents from environmental.txt to .env
+        Open environmental.txt
+        Copy all content
+        Paste into the newly created .env file
+
+    4. Import mysql database from the supabase
+        student_Voting_system.sql
+    
+    5.Start the Application
+        Terminal 1 - Start Nodes:
+                                    npm run start-nodes
+        Terminal 2 - Start Main Application:
+                                    npm run dev
+        Terminal 3 - Start Server:
+                                    cd server
+                                    npm run dev
+    
+    Troubleshooting Tips:
+                If Node.js commands aren't recognized: Restart your terminal after Node.js installation
+
+                If ports are busy: Check that ports 3000, 3001, 3002 (or whatever your app uses) are available
+
+                If dependencies fail: Try deleting node_modules and package-lock.json, then run npm install again
+
+                Permission issues (Linux/macOS): Sometimes you may need to use sudo for global installations, but avoid it for project dependencies
+
+                Required Ports
+                Make sure these ports are available (typical defaults):
+
+                Main app: 3000
+
+                Server: 3001
+
+                Nodes: 3002, 3003 (or as configured in your environment)
+
