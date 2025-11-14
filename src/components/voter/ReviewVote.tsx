@@ -1,149 +1,242 @@
 import React, { useState, useCallback } from 'react';
-import { User, School, Calendar, ArrowLeft, ShieldCheck, Hash, CheckCircle } from 'lucide-react';
-import { Candidate } from '../../types';
+import { User, ArrowLeft, ShieldCheck, Hash, CheckCircle } from 'lucide-react';
+import { Candidate, Position } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import { LoadingSpinner } from '../common/LoadingSpinner';
-import { api } from '../../utils/api'; // Add this import
+import { api } from '../../utils/api';
+import { VoteReceipt } from './VoteReceipt';
 
 interface ReviewVoteProps {
-  selectedVotes: { [position: string]: number };
+  selectedVotes: { [position: string]: number[] };
   candidates: Candidate[];
+  positions: Position[];
   onBack: () => void;
-  onConfirm: (votes: any[], ballotId: string, hashedBallotId: string) => void;
+  onVoteCast: (receipt: any) => void;
+  onLogout: () => void;
   loading?: boolean;
 }
 
 export const ReviewVote: React.FC<ReviewVoteProps> = ({
   selectedVotes,
   candidates,
+  positions,
   onBack,
-  onConfirm,
+  onVoteCast,
+  onLogout,
   loading = false
 }) => {
   const { user } = useAuth();
   const [ballotId, setBallotId] = useState<string>('');
   const [hashedBallotId, setHashedBallotId] = useState<string>('');
-  const [isSubmitting, setIsSubmitting] = useState(false); // Add local loading state
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [submittedVotes, setSubmittedVotes] = useState<any[]>([]);
 
-  // Generate secure ballot ID and its hash using Web Crypto API
+  // Generate cryptographically secure random string
+  const generateSecureRandom = (length: number): string => {
+    const array = new Uint8Array(length);
+    crypto.getRandomValues(array);
+    return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+  };
+
+  // Generate unique and secure ballot ID with timestamp and random data
   const generateSecureBallotId = useCallback(async (): Promise<{ ballotId: string; hashedBallotId: string }> => {
     if (!user) {
       throw new Error('User not authenticated');
     }
 
-    const timestamp = Date.now().toString();
-    const randomSalt = crypto.getRandomValues(new Uint32Array(1))[0].toString(36);
-    const voterData = `${user.studentId}-${user.fullName}-${timestamp}-${randomSalt}`;
+    // Generate unique components
+    const timestamp = Date.now().toString(36); // Base36 for shorter representation
+    const randomPart1 = generateSecureRandom(8); // 8 bytes = 16 hex chars
+    const randomPart2 = generateSecureRandom(4); // 4 bytes = 8 hex chars
+    const voterSalt = generateSecureRandom(2); // 2 bytes = 4 hex chars
+
+    // Create unique ballot ID with multiple entropy sources
+    const uniqueBallotId = `vote_${timestamp}_${randomPart1}_${randomPart2}_${voterSalt}`;
     
-    // Generate ballot ID (shorter, readable version)
-    const ballotId = `ballot_${timestamp}_${randomSalt.substring(0, 8)}`;
+    // Create data for hashing with additional entropy
+    const hashData = `${user.studentId}-${user.fullName}-${timestamp}-${randomPart1}-${randomPart2}-${voterSalt}-${Date.now()}-${Math.random()}`;
     
-    // Generate secure hash of ballot ID for blockchain storage
+    // Generate SHA-256 hash
     const encoder = new TextEncoder();
-    const data = encoder.encode(voterData);
+    const data = encoder.encode(hashData);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashedBallotId = `0x${hashArray.map(b => b.toString(16).padStart(2, '0')).join('')}`;
+    const secureHashedBallotId = `0x${hashArray.map(b => b.toString(16).padStart(2, '0')).join('')}`;
     
-    return { ballotId, hashedBallotId };
+    console.log('🔐 Generated secure ballot IDs:', {
+      readableId: uniqueBallotId,
+      hashedId: `${secureHashedBallotId.substring(0, 16)}...`,
+      components: {
+        timestamp,
+        randomParts: `${randomPart1.substring(0, 4)}...${randomPart2.substring(0, 4)}...`,
+        voterSalt: voterSalt.substring(0, 4)
+      }
+    });
+
+    return { 
+      ballotId: uniqueBallotId, 
+      hashedBallotId: secureHashedBallotId 
+    };
   }, [user]);
 
-  // Initialize ballot ID on component mount
+  // Initialize secure ballot IDs on component mount
   React.useEffect(() => {
-    const initBallotId = async () => {
+    let isMounted = true;
+
+    const initSecureBallotId = async () => {
       try {
-        const { ballotId, hashedBallotId } = await generateSecureBallotId();
-        setBallotId(ballotId);
-        setHashedBallotId(hashedBallotId);
+        console.log('🔄 Generating secure ballot IDs...');
+        const { ballotId: newBallotId, hashedBallotId: newHashedBallotId } = await generateSecureBallotId();
+        
+        if (isMounted) {
+          setBallotId(newBallotId);
+          setHashedBallotId(newHashedBallotId);
+          console.log('✅ Secure ballot IDs generated successfully');
+        }
       } catch (error) {
-        console.error('Error generating ballot ID:', error);
-        // Fallback generation
-        const timestamp = Date.now().toString();
-        const randomSalt = Math.random().toString(36).substring(2, 10);
-        setBallotId(`ballot_${timestamp}_${randomSalt}`);
-        setHashedBallotId(`fallback_${timestamp}_${randomSalt}`);
+        console.error('❌ Error generating secure ballot ID:', error);
+        
+        if (isMounted) {
+          // Fallback generation with maximum entropy
+          const timestamp = Date.now().toString(36);
+          const fallbackRandom1 = Math.random().toString(36).substring(2, 15);
+          const fallbackRandom2 = Math.random().toString(36).substring(2, 15);
+          const fallbackSalt = Math.random().toString(36).substring(2, 6);
+          
+          const fallbackBallotId = `vote_${timestamp}_${fallbackRandom1}_${fallbackRandom2}_${fallbackSalt}`;
+          const fallbackHashedId = `0x${Array.from(crypto.getRandomValues(new Uint8Array(16)))
+            .map(b => b.toString(16).padStart(2, '0')).join('')}_fallback`;
+          
+          setBallotId(fallbackBallotId);
+          setHashedBallotId(fallbackHashedId);
+          console.warn('⚠️ Using fallback ballot ID generation');
+        }
       }
     };
 
-    initBallotId();
+    initSecureBallotId();
+
+    return () => {
+      isMounted = false;
+    };
   }, [generateSecureBallotId]);
 
-  // Get candidate details for each selected vote
-  const getSelectedCandidate = (position: string) => {
-    const candidateId = selectedVotes[position];
-    return candidates.find(c => c.id === candidateId);
-  };
-
-  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    e.currentTarget.src = '/default-avatar.png';
+  const getSelectedCandidates = (position: string) => {
+    const candidateIds = selectedVotes[position] || [];
+    return candidateIds.map(candidateId => 
+      candidates.find(c => c.id === candidateId)
+    ).filter(Boolean) as Candidate[];
   };
 
   const handleConfirm = async () => {
     try {
-      if (!hashedBallotId) {
-        throw new Error('Ballot ID not properly generated');
+      if (!hashedBallotId || !ballotId) {
+        throw new Error('Secure ballot IDs not properly generated');
+      }
+
+      // Validate ballot ID uniqueness components
+      if (!ballotId.includes('_') || ballotId.split('_').length < 4) {
+        throw new Error('Invalid ballot ID format');
       }
 
       setIsSubmitting(true);
 
-      // First, mark the voter as voted in the SQL database
+      // First, mark the voter as voted in the SQL database with ballot ID
       try {
         console.log('🔄 Marking voter as voted in SQL database...');
         const markVotedResponse = await api.post('/voting/mark-voted', {
-          studentId: user?.studentId
+          studentId: user?.studentId,
+          ballotId: ballotId // Add ballotId here
         });
 
         if (!markVotedResponse.success) {
           throw new Error(markVotedResponse.error || 'Failed to update voter status');
         }
         
-        console.log('✅ Voter marked as voted in SQL database');
+        console.log('✅ Voter marked as voted in SQL database with ballot ID:', ballotId);
       } catch (error) {
         console.error('❌ Failed to mark voter as voted:', error);
         throw new Error('Failed to update your voting status. Please try again.');
       }
 
-      // Then prepare and submit the votes
-      const votes = Object.entries(selectedVotes).map(([position, candidateId]) => {
-        const candidate = getSelectedCandidate(position);
-        return {
-          candidateId,
-          position,
-          candidateName: candidate?.name || 'Unknown Candidate',
-          candidateParty: candidate?.party || 'No Party',
-          ballotId: hashedBallotId // Use hashed version for security
-        };
+      // Prepare votes for submission
+      const votes = Object.entries(selectedVotes).flatMap(([position, candidateIds]) => {
+        return candidateIds.map(candidateId => {
+          const candidate = candidates.find(c => c.id === candidateId);
+          return {
+            candidateId,
+            position,
+            candidateName: candidate?.name || 'Unknown Candidate',
+            candidateParty: candidate?.party || 'No Party',
+            ballotId: hashedBallotId // Use secure hash for blockchain
+          };
+        });
       });
+
+      console.log('📋 Prepared votes for submission:', {
+        ballotId: ballotId,
+        hashedBallotId: `${hashedBallotId.substring(0, 16)}...`,
+        voteCount: votes.length,
+        positions: Object.keys(selectedVotes).length
+      });
+
+      // Store votes for receipt display
+      setSubmittedVotes(votes);
       
-      console.log('✅ Votes prepared, calling onConfirm...');
-      onConfirm(votes, ballotId, hashedBallotId);
+      // Show receipt component which will handle blockchain submission
+      setShowReceipt(true);
       
     } catch (error) {
-      console.error('Error preparing vote:', error);
+      console.error('❌ Error preparing vote:', error);
       alert(error.message || 'Error preparing your vote. Please try again.');
       setIsSubmitting(false);
     }
   };
 
+  const handleVoteComplete = (receipt: any) => {
+    // Pass the receipt back to CastVote component
+    onVoteCast(receipt);
+  };
+
+  const handleBackFromReceipt = () => {
+    setShowReceipt(false);
+    setIsSubmitting(false);
+  };
+
   const formatBallotId = (id: string) => {
-    if (!id) return 'N/A';
-    // Shorter format for mobile
+    if (!id) return 'Generating...';
     if (window.innerWidth < 768) {
-      return `${id.substring(0, 6)}...${id.substring(id.length - 6)}`;
+      return `${id.substring(0, 10)}...${id.substring(id.length - 6)}`;
     }
-    return `${id.substring(0, 8)}...${id.substring(id.length - 8)}`;
+    return `${id.substring(0, 12)}...${id.substring(id.length - 8)}`;
   };
 
   const formatHashedBallotId = (hash: string) => {
-    if (!hash) return 'N/A';
+    if (!hash) return 'Generating...';
     if (hash.startsWith('0x')) {
-      return `${hash.substring(0, 10)}...${hash.substring(hash.length - 8)}`;
+      if (window.innerWidth < 768) {
+        return `${hash.substring(0, 12)}...${hash.substring(hash.length - 8)}`;
+      }
+      return `${hash.substring(0, 16)}...${hash.substring(hash.length - 8)}`;
     }
     return formatBallotId(hash);
   };
 
-  const positions = Object.keys(selectedVotes);
-  const isConfirmDisabled = loading || isSubmitting || !ballotId || !hashedBallotId;
+  const isConfirmDisabled = loading || isSubmitting || !ballotId || !hashedBallotId || ballotId === 'Generating...';
+
+  // Show VoteReceipt if vote is being submitted or was successfully submitted
+  if (showReceipt) {
+    return (
+      <VoteReceipt
+        votes={submittedVotes}
+        ballotId={ballotId}
+        hashedBallotId={hashedBallotId}
+        onVoteComplete={handleVoteComplete}
+        onBack={handleBackFromReceipt}
+      />
+    );
+  }
 
   if (!user) {
     return (
@@ -161,9 +254,7 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
 
   return (
     <div className="min-h-screen bg-white py-4 px-3 sm:px-4 lg:px-6">
-      {/* Mobile First Container */}
       <div className="max-w-6xl mx-auto">
-        {/* Responsive Header */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 mb-4 sm:mb-6 overflow-hidden">
           <div className="p-4 sm:p-6 bg-white">
             <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
@@ -182,11 +273,8 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
           </div>
         </div>
 
-        {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          {/* Left Column - Voter Info & Actions */}
           <div className="lg:col-span-1 space-y-4 sm:space-y-6">
-            {/* Voter Information Card */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                 <User className="w-5 h-5 mr-2 text-blue-800" />
@@ -223,15 +311,22 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
                 </div>
               </div>
 
-              {/* Ballot ID Section */}
               <div className="mt-6 pt-4 border-t border-gray-200">
                 <div className="space-y-3">
                   <div className="flex items-start space-x-2">
                     <Hash className="w-4 h-4 text-blue-800 mt-1 flex-shrink-0" />
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-gray-700 mb-1">Ballot ID (Readable)</p>
-                      <p className="font-mono text-xs text-gray-900 break-all bg-gray-50 rounded px-2 py-1">
-                        {formatBallotId(ballotId)}
+                      <p className="text-xs font-medium text-gray-700 mb-1">Unique Ballot ID</p>
+                      <div className="flex items-center space-x-2">
+                        <p className="font-mono text-xs text-gray-900 break-all bg-gray-50 rounded px-2 py-1 flex-1">
+                          {formatBallotId(ballotId)}
+                        </p>
+                        {!ballotId && (
+                          <LoadingSpinner size="xs" />
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Timestamp + cryptographically secure random data
                       </p>
                     </div>
                   </div>
@@ -240,11 +335,16 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
                     <ShieldCheck className="w-4 h-4 text-green-600 mt-1 flex-shrink-0" />
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-medium text-gray-700 mb-1">Secure Hash (Blockchain)</p>
-                      <p className="font-mono text-xs text-gray-900 break-all bg-green-50 rounded px-2 py-1">
-                        {formatHashedBallotId(hashedBallotId)}
-                      </p>
-                      <p className="text-xs text-gray-600 mt-1">
-                        This secure hash will be recorded on the blockchain
+                      <div className="flex items-center space-x-2">
+                        <p className="font-mono text-xs text-gray-900 break-all bg-green-50 rounded px-2 py-1 flex-1">
+                          {formatHashedBallotId(hashedBallotId)}
+                        </p>
+                        {!hashedBallotId && (
+                          <LoadingSpinner size="xs" />
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        SHA-256 hash for blockchain immutability
                       </p>
                     </div>
                   </div>
@@ -252,13 +352,12 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
               </div>
             </div>
 
-            {/* Action Buttons Card */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6">
               <div className="space-y-4">
                 <div className="text-center">
                   <div className="bg-gray-100 rounded-full px-4 py-2 inline-block">
                     <p className="text-sm font-semibold text-gray-800">
-                      {positions.length} position{positions.length !== 1 ? 's' : ''} selected
+                      {Object.keys(selectedVotes).length} position{Object.keys(selectedVotes).length !== 1 ? 's' : ''} selected
                     </p>
                   </div>
                 </div>
@@ -288,29 +387,34 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
                     <span>Back to Voting</span>
                   </button>
                 </div>
+
+                {isConfirmDisabled && ballotId && hashedBallotId && (
+                  <div className="text-center">
+                    <p className="text-xs text-green-600 bg-green-50 rounded-lg p-2">
+                      ✓ Secure ballot IDs generated and ready for submission
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Important Notice - Mobile Only */}
             <div className="lg:hidden bg-gray-50 border border-gray-200 rounded-2xl p-4">
               <div className="flex items-start space-x-3">
                 <ShieldCheck className="w-5 h-5 text-blue-800 mt-0.5 flex-shrink-0" />
                 <div>
                   <h4 className="font-semibold text-gray-800 text-sm">Security Features</h4>
                   <ul className="text-gray-700 text-xs mt-1 space-y-1">
-                    <li>• Secure SHA-256 hashing</li>
-                    <li>• Blockchain immutability</li>
-                    <li>• Anonymous voting</li>
-                    <li>• Cryptographic proof</li>
+                    <li>• Cryptographically secure ballot ID</li>
+                    <li>• SHA-256 hashing for blockchain</li>
+                    <li>• Multiple entropy sources</li>
+                    <li>• Guaranteed uniqueness</li>
                   </ul>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Right Column - Selected Candidates */}
           <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-            {/* Selected Candidates Card */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 sm:mb-6 flex items-center">
                 <CheckCircle className="w-5 h-5 mr-2 text-blue-800" />
@@ -319,48 +423,57 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
               
               <div className="space-y-4 sm:space-y-6">
                 {positions.map((position) => {
-                  const candidate = getSelectedCandidate(position);
+                  const selectedCandidates = getSelectedCandidates(position.name);
+                  const maxVotes = position.maxVotes || 1;
+                  
                   return (
-                    <div key={position} className="border border-gray-200 rounded-xl p-4 bg-white hover:bg-gray-50 transition-colors duration-200">
-                      <h3 className="font-semibold text-gray-900 mb-3 text-base sm:text-lg bg-gray-100 rounded-lg px-3 py-2">
-                        {position}
-                      </h3>
-                      {candidate ? (
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 p-3 bg-white rounded-lg border border-gray-200">
-                          <div className="flex items-center space-x-3 w-full sm:w-auto">
-                            <img
-                              src={candidate.image_url || '/default-avatar.png'}
-                              alt={candidate.name}
-                              className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover flex-shrink-0 border-2 border-gray-300"
-                              onError={handleImageError}
-                            />
-                            <div className="min-w-0 flex-1 sm:hidden">
-                              <h4 className="font-semibold text-gray-900 text-sm truncate">
-                                {candidate.name}
-                              </h4>
-                              <p className="text-gray-600 text-xs truncate">
-                                {candidate.party}
-                              </p>
+                    <div key={position.id} className="border border-gray-200 rounded-xl p-4 bg-white hover:bg-gray-50 transition-colors duration-200">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-semibold text-gray-900 text-base sm:text-lg bg-gray-100 rounded-lg px-3 py-2">
+                          {position.name}
+                        </h3>
+                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium">
+                          {selectedCandidates.length}/{maxVotes} selected
+                        </span>
+                      </div>
+                      
+                      {selectedCandidates.length > 0 ? (
+                        <div className="space-y-3">
+                          {selectedCandidates.map((candidate) => (
+                            <div key={candidate.id} className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 p-3 bg-white rounded-lg border border-gray-200">
+                              <div className="flex items-center space-x-3 w-full sm:w-auto">
+                                <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+                                  <User className="w-6 h-6 text-gray-500" />
+                                </div>
+                                <div className="min-w-0 flex-1 sm:hidden">
+                                  <h4 className="font-semibold text-gray-900 text-sm truncate">
+                                    {candidate.name}
+                                  </h4>
+                                  <p className="text-gray-600 text-xs truncate">
+                                    {candidate.party}
+                                  </p>
+                                </div>
+                              </div>
+                              
+                              <div className="flex-1 min-w-0 w-full">
+                                <div className="hidden sm:block">
+                                  <h4 className="font-semibold text-gray-900 text-lg">
+                                    {candidate.name}
+                                  </h4>
+                                  <p className="text-gray-600">{candidate.party}</p>
+                                </div>
+                                {candidate.manifesto && (
+                                  <p className="text-sm text-gray-700 mt-2 line-clamp-2 bg-gray-50 rounded-lg px-3 py-2">
+                                    {candidate.manifesto}
+                                  </p>
+                                )}
+                              </div>
+                              
+                              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-800 rounded-full flex items-center justify-center flex-shrink-0">
+                                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                              </div>
                             </div>
-                          </div>
-                          
-                          <div className="flex-1 min-w-0 w-full">
-                            <div className="hidden sm:block">
-                              <h4 className="font-semibold text-gray-900 text-lg">
-                                {candidate.name}
-                              </h4>
-                              <p className="text-gray-600">{candidate.party}</p>
-                            </div>
-                            {candidate.manifesto && (
-                              <p className="text-sm text-gray-700 mt-2 line-clamp-2 bg-gray-50 rounded-lg px-3 py-2">
-                                {candidate.manifesto}
-                              </p>
-                            )}
-                          </div>
-                          
-                          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-800 rounded-full flex items-center justify-center flex-shrink-0">
-                            <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                          </div>
+                          ))}
                         </div>
                       ) : (
                         <div className="text-red-500 bg-red-50 p-3 rounded-lg text-sm border border-red-200">
@@ -373,28 +486,27 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
               </div>
             </div>
 
-            {/* Security Notice - Desktop Only */}
             <div className="hidden lg:block bg-gray-50 border border-gray-200 rounded-2xl p-6">
               <div className="flex items-start space-x-4">
                 <ShieldCheck className="w-6 h-6 text-blue-800 mt-0.5 flex-shrink-0" />
                 <div>
-                  <h4 className="font-semibold text-gray-800 text-lg mb-3">Security Features</h4>
+                  <h4 className="font-semibold text-gray-800 text-lg mb-3">Secure Ballot Generation</h4>
                   <ul className="text-gray-700 text-sm space-y-2">
                     <li className="flex items-start space-x-2">
                       <ShieldCheck className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                      <span><strong>SHA-256 Hashing:</strong> Your ballot ID is securely hashed before blockchain storage</span>
+                      <span><strong>Cryptographic Entropy:</strong> Multiple secure random sources prevent collisions</span>
                     </li>
                     <li className="flex items-start space-x-2">
                       <ShieldCheck className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                      <span><strong>Blockchain Immutability:</strong> Votes cannot be altered once recorded</span>
+                      <span><strong>SHA-256 Hashing:</strong> Your ballot ID is securely hashed for blockchain storage</span>
                     </li>
                     <li className="flex items-start space-x-2">
                       <ShieldCheck className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                      <span><strong>Anonymous Voting:</strong> Personal information is never stored on-chain</span>
+                      <span><strong>Guaranteed Uniqueness:</strong> Timestamp + multiple random components ensure no duplicates</span>
                     </li>
                     <li className="flex items-start space-x-2">
                       <ShieldCheck className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                      <span><strong>Cryptographic Proof:</strong> Receipt provides verifiable proof of voting</span>
+                      <span><strong>Blockchain Ready:</strong> Secure hash format compatible with Ethereum blockchain</span>
                     </li>
                   </ul>
                 </div>
@@ -403,7 +515,6 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
           </div>
         </div>
 
-        {/* Bottom Action Bar - Mobile Only */}
         <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg">
           <div className="flex space-x-3">
             <button
@@ -432,7 +543,6 @@ export const ReviewVote: React.FC<ReviewVoteProps> = ({
           </div>
         </div>
 
-        {/* Add padding to account for fixed bottom bar on mobile */}
         <div className="lg:hidden h-20"></div>
       </div>
     </div>

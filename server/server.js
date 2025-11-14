@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { testConnection, cleanupPool } from './config/database.js';
 
-// Import routes
+// Import routes using named imports
 import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
 import candidatesRoutes from './routes/candidates.js';
@@ -15,6 +15,7 @@ import votingRoutes from './routes/voting.js';
 import pollRoutes from './routes/poll.js';
 import coursesRoutes from './routes/courses.js';
 import blockchainRoutes from './routes/blockchain.js';
+import positionsRoutes from './routes/positions.js'; // NEW: Import positions routes
 
 // Load .env from server folder; if not found, attempt to load from project root
 const envLoadResult = dotenv.config();
@@ -83,6 +84,7 @@ app.use('/api/voting', votingRoutes);
 app.use('/api/poll', pollRoutes);
 app.use('/api/courses', coursesRoutes);
 app.use('/api/blockchain', blockchainRoutes);
+app.use('/api/positions', positionsRoutes); // NEW: Add positions routes
 
 // Enhanced health check with database status
 app.get('/api/health', async (req, res) => {
@@ -204,6 +206,7 @@ const startServer = async () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 API Documentation: http://localhost:${PORT}/api/health`);
       console.log(`🔒 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🗳️ Positions API: http://localhost:${PORT}/api/positions`); // NEW: Log positions API
       
       // Log memory usage periodically
       setInterval(() => {

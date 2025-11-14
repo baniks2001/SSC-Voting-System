@@ -2,7 +2,7 @@ import express from 'express';
 import crypto from 'crypto';
 import { ethereumService } from '../services/ethereumService.js';
 import { logAuditAction } from '../utils/audit.js';
-import { pool } from '../config/database.js'; // Import database pool
+import { pool } from '../config/database.js';
 
 const router = express.Router();
 
@@ -11,15 +11,15 @@ function serializeBigInt(obj) {
   if (obj === null || obj === undefined) {
     return obj;
   }
-  
+
   if (typeof obj === 'bigint') {
     return obj.toString();
   }
-  
+
   if (Array.isArray(obj)) {
     return obj.map(item => serializeBigInt(item));
   }
-  
+
   if (typeof obj === 'object') {
     const result = {};
     for (const [key, value] of Object.entries(obj)) {
@@ -27,15 +27,15 @@ function serializeBigInt(obj) {
     }
     return result;
   }
-  
+
   return obj;
 }
 
-// Get candidates from SQL database - FIXED for your structure
+// Get candidates from SQL database
 async function getCandidatesFromSQL() {
   try {
     const [candidates] = await pool.execute(`
-      SELECT id, name, party, position, image_url, vote_count, is_active
+      SELECT id, name, party, position, vote_count, is_active
       FROM candidates 
       WHERE is_active = 1
       ORDER BY position, name
@@ -47,7 +47,7 @@ async function getCandidatesFromSQL() {
   }
 }
 
-// Get unique positions from candidates - FIXED for your structure
+// Get unique positions from candidates
 async function getPositionsFromCandidates() {
   try {
     const [positions] = await pool.execute(`
@@ -63,16 +63,15 @@ async function getPositionsFromCandidates() {
   }
 }
 
-// Poll results from blockchain votes + SQL candidates - FIXED
+// Poll results from blockchain votes + SQL candidates
 router.get('/results', async (req, res) => {
   try {
     console.log('📊 Fetching poll results (Blockchain votes + SQL candidates)');
-    
-    // Get data from both sources in parallel
+
     const [blockchainResults, sqlCandidates, uniquePositions] = await Promise.all([
-      ethereumService.getElectionResults(), // Blockchain votes
-      getCandidatesFromSQL(), // SQL candidates
-      getPositionsFromCandidates() // Unique positions from candidates
+      ethereumService.getElectionResults(),
+      getCandidatesFromSQL(),
+      getPositionsFromCandidates()
     ]);
 
     console.log('📋 Data retrieved:', {
@@ -81,30 +80,24 @@ router.get('/results', async (req, res) => {
       uniquePositions: uniquePositions.length
     });
 
-    // Create a map for quick candidate lookup
     const candidateMap = new Map();
     sqlCandidates.forEach(candidate => {
       candidateMap.set(candidate.id, {
         id: candidate.id,
         name: candidate.name,
         party: candidate.party,
-        image_url: candidate.image_url,
         position: candidate.position,
-        // We'll use blockchain votes, not SQL vote_count
-        vote_count: 0 // Initialize vote count from blockchain
+        vote_count: 0
       });
     });
 
-    // Count votes from blockchain and map to SQL candidates
     let totalVotes = 0;
 
-    // Process blockchain votes and count them for SQL candidates
     if (blockchainResults.voteData && Array.isArray(blockchainResults.voteData)) {
       blockchainResults.voteData.forEach(vote => {
         if (vote.votes && Array.isArray(vote.votes)) {
           vote.votes.forEach(v => {
             const candidateId = v.candidateId;
-            
             if (candidateMap.has(candidateId)) {
               candidateMap.get(candidateId).vote_count++;
               totalVotes++;
@@ -114,20 +107,15 @@ router.get('/results', async (req, res) => {
       });
     }
 
-    // Group candidates by position for the final response
     const groupedCandidates = {};
-    
     candidateMap.forEach(candidate => {
       const positionName = candidate.position;
-      
       if (!groupedCandidates[positionName]) {
         groupedCandidates[positionName] = [];
       }
-      
       groupedCandidates[positionName].push(candidate);
     });
 
-    // Sort candidates within each position by vote count (descending)
     Object.keys(groupedCandidates).forEach(position => {
       groupedCandidates[position].sort((a, b) => b.vote_count - a.vote_count);
     });
@@ -138,13 +126,12 @@ router.get('/results', async (req, res) => {
       candidates: sqlCandidates.length
     });
 
-    // Prepare final response
     const response = serializeBigInt({
       success: true,
       totalVotes: totalVotes,
-      candidates: Array.from(candidateMap.values()), // All candidates with vote counts
-      positions: Object.keys(groupedCandidates), // Available positions
-      resultsByPosition: groupedCandidates, // Candidates grouped by position
+      candidates: Array.from(candidateMap.values()),
+      positions: Object.keys(groupedCandidates),
+      resultsByPosition: groupedCandidates,
       source: 'blockchain_votes_sql_candidates',
       lastUpdated: new Date().toISOString()
     });
@@ -153,17 +140,14 @@ router.get('/results', async (req, res) => {
 
   } catch (error) {
     console.error('Get poll results error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Failed to get poll results: ' + error.message 
+      error: 'Failed to get poll results: ' + error.message
     });
   }
 });
 
-// The rest of your existing routes remain the same...
-// [Keep all your existing routes below - cast-blockchain, blockchain-vote, receipt, verify, blockchain-status, etc.]
-
-// Submit vote to Ethereum blockchain (Fully Decentralized - No SQL)
+// Submit vote to Ethereum blockchain (Fixed - No duplicate check before submission)
 router.post('/cast-blockchain', async (req, res) => {
   try {
     console.log('🔗 Fully decentralized blockchain vote submission');
@@ -181,10 +165,9 @@ router.post('/cast-blockchain', async (req, res) => {
       voterId,
       voteCount: votes.length,
       timestamp,
-      ballotId: ballotId || 'undefined'
+      ballotId: ballotId
     });
 
-    // Validate that each vote has candidateId and position
     for (const vote of votes) {
       if (!vote.candidateId || !vote.position) {
         console.error('❌ Vote missing required fields:', vote);
@@ -195,17 +178,6 @@ router.post('/cast-blockchain', async (req, res) => {
       }
     }
 
-    // Check if voter has already voted on blockchain
-    const existingVote = await ethereumService.checkVoterHasVoted(voterId);
-    if (existingVote) {
-      console.log('❌ Voter already voted on blockchain:', voterId);
-      return res.status(400).json({
-        success: false,
-        error: 'Voter has already cast a vote on the blockchain'
-      });
-    }
-
-    // Get blockchain status from all nodes
     const blockchainInfo = await ethereumService.getBlockchainInfo();
     if (!blockchainInfo.isConnected && !blockchainInfo.simulationMode) {
       console.log('❌ No blockchain nodes connected');
@@ -228,8 +200,7 @@ router.post('/cast-blockchain', async (req, res) => {
       voterId: voterId,
       votes: votes,
       timestamp: timestamp || new Date().toISOString(),
-      ballotId: ballotId || `ballot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      // Generate unique voter hash for anonymity
+      ballotId: ballotId,
       voterHash: crypto.createHash('sha256')
         .update(`${voterId}-${Date.now()}-${Math.random().toString(36)}`)
         .digest('hex')
@@ -255,20 +226,17 @@ router.post('/cast-blockchain', async (req, res) => {
       simulated: blockchainResult.receipt.simulated
     });
 
-    // Log audit action (this could go to a separate audit blockchain or log file)
-    await logAuditAction(voterId, 'voter', 'DECENTRALIZED_VOTE_CAST', 
+    await logAuditAction(voterId, 'voter', 'DECENTRALIZED_VOTE_CAST',
       `Vote cast on decentralized Ethereum blockchain. TX: ${blockchainResult.receipt.transactionHash} (Node: ${blockchainResult.receipt.node})`, req);
 
     console.log('🎉 Fully decentralized blockchain vote process completed successfully for voter:', voterId);
 
-    // Serialize BigInt values before sending response
     const response = serializeBigInt({
       success: true,
       receipt: blockchainResult.receipt,
       node: blockchainResult.receipt.node,
       simulated: blockchainResult.receipt.simulated,
       message: `Vote successfully recorded ${blockchainResult.receipt.simulated ? 'in simulation mode' : 'on decentralized Ethereum blockchain'} (Node: ${blockchainResult.receipt.node})`,
-      // Return the vote receipt for client storage
       voteReceipt: {
         ballotId: voteData.ballotId,
         transactionHash: blockchainResult.receipt.transactionHash,
@@ -282,7 +250,7 @@ router.post('/cast-blockchain', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Decentralized blockchain vote submission error:', error);
-    
+
     res.status(500).json({
       success: false,
       error: 'Failed to submit vote to decentralized blockchain network: ' + error.message
@@ -305,7 +273,6 @@ router.get('/blockchain-vote/:ballotId', async (req, res) => {
       });
     }
 
-    // Serialize BigInt values
     const response = serializeBigInt({
       success: true,
       vote: voteData,
@@ -329,18 +296,16 @@ router.get('/receipt/:voterId', async (req, res) => {
     const { voterId } = req.params;
     console.log('🧾 Fetching vote receipt from blockchain for voter:', voterId);
 
-    // Get all votes for this voter from blockchain
     const voterVotes = await ethereumService.getVotesByVoter(voterId);
 
     if (!voterVotes || voterVotes.length === 0) {
       console.log('❌ No vote record found for voter:', voterId);
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'No vote record found on blockchain' 
+        error: 'No vote record found on blockchain'
       });
     }
 
-    // Get the latest vote
     const latestVote = voterVotes[0];
 
     const receipt = serializeBigInt({
@@ -360,9 +325,9 @@ router.get('/receipt/:voterId', async (req, res) => {
     res.json(receipt);
   } catch (error) {
     console.error('Get blockchain receipt error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Failed to get vote receipt from blockchain: ' + error.message 
+      error: 'Failed to get vote receipt from blockchain: ' + error.message
     });
   }
 });
@@ -399,11 +364,9 @@ router.get('/verify/:ballotId', async (req, res) => {
 router.get('/blockchain-status', async (req, res) => {
   try {
     console.log('🔍 Checking decentralized multi-node blockchain status...');
-    
-    // Get blockchain info from your ethereumService
+
     const blockchainInfo = await ethereumService.getBlockchainInfo();
-    
-    // Get status of all nodes
+
     const nodesStatus = ethereumService.nodes.map(node => ({
       name: node.name,
       connected: node.isConnected,
@@ -441,8 +404,7 @@ router.get('/blockchain-status', async (req, res) => {
 router.get('/blockchain-votes', async (req, res) => {
   try {
     console.log('📋 Retrieving all votes from decentralized blockchain');
-    
-    // This would get votes from your blockchain service
+
     const allVotes = await ethereumService.getAllVotesFromBlockchain();
 
     const response = serializeBigInt({
@@ -468,7 +430,7 @@ router.get('/blockchain-votes', async (req, res) => {
 router.get('/blockchain-health', async (req, res) => {
   try {
     const blockchainInfo = await ethereumService.getBlockchainInfo();
-    
+
     const response = serializeBigInt({
       success: true,
       status: blockchainInfo.isConnected ? 'healthy' : 'unhealthy',
@@ -499,7 +461,7 @@ router.get('/blockchain-nodes', async (req, res) => {
           const blockNumber = await node.web3.eth.getBlockNumber();
           const balance = await node.web3.eth.getBalance(node.account);
           const peerCount = await node.web3.eth.net.getPeerCount();
-          
+
           return serializeBigInt({
             name: node.name,
             url: node.rpcUrl,
@@ -534,12 +496,11 @@ router.get('/blockchain-nodes', async (req, res) => {
   }
 });
 
-
-// Add this route to your voting.js file
+// Mark voter as voted in SQL database
 router.post('/mark-voted', async (req, res) => {
   try {
-    const { studentId } = req.body;
-    
+    const { studentId, ballotId } = req.body;
+
     if (!studentId) {
       return res.status(400).json({
         success: false,
@@ -547,12 +508,11 @@ router.post('/mark-voted', async (req, res) => {
       });
     }
 
-    console.log('🔄 Marking voter as voted in SQL database:', studentId);
+    console.log('🔄 Marking voter as voted in SQL database:', { studentId, ballotId });
 
-    // Update the voter's has_voted status in the database
     const [result] = await pool.execute(
-      'UPDATE voters SET has_voted = true, voted_at = NOW() WHERE student_id = ?',
-      [studentId]
+      'UPDATE voters SET has_voted = true, voted_at = NOW(), ballot_id = ? WHERE student_id = ?',
+      [ballotId || null, studentId]
     );
 
     if (result.affectedRows === 0) {
@@ -563,11 +523,12 @@ router.post('/mark-voted', async (req, res) => {
       });
     }
 
-    console.log('✅ Voter marked as voted successfully:', studentId);
-    
+    console.log('✅ Voter marked as voted successfully:', { studentId, ballotId });
+
     res.json({
       success: true,
-      message: 'Voter status updated successfully'
+      message: 'Voter status updated successfully',
+      ballotId: ballotId
     });
 
   } catch (error) {
@@ -578,4 +539,5 @@ router.post('/mark-voted', async (req, res) => {
     });
   }
 });
+
 export default router;

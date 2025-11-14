@@ -41,15 +41,15 @@ router.get('/admin', authenticateAdmin, async (req, res) => {
 router.post('/', authenticateAdmin, async (req, res) => {
   try {
     console.log('➕ Creating new candidate:', req.body.name, 'by admin:', req.user.email || req.user.id);
-    const { name, party, position, imageUrl } = req.body;
+    const { name, party, position } = req.body;
 
     if (!name || !party || !position) {
       return res.status(400).json({ error: 'Name, party, and position are required' });
     }
 
     const [result] = await pool.execute(
-      'INSERT INTO candidates (name, party, position, image_url) VALUES (?, ?, ?, ?)',
-      [name, party, position, imageUrl || null]
+      'INSERT INTO candidates (name, party, position) VALUES (?, ?, ?)',
+      [name, party, position]
     );
 
     await logAuditAction(req.user.id, 'admin', 'CREATE_CANDIDATE', `Created candidate: ${name}`, req);
@@ -68,11 +68,11 @@ router.put('/:id', authenticateAdmin, async (req, res) => {
   try {
     console.log('✏️ Updating candidate ID:', req.params.id, 'by admin:', req.user.email || req.user.id);
     const { id } = req.params;
-    const { name, party, position, imageUrl } = req.body;
+    const { name, party, position } = req.body;
 
     await pool.execute(
-      'UPDATE candidates SET name = ?, party = ?, position = ?, image_url = ? WHERE id = ?',
-      [name, party, position, imageUrl || null, id]
+      'UPDATE candidates SET name = ?, party = ?, position = ? WHERE id = ?',
+      [name, party, position, id]
     );
 
     await logAuditAction(req.user.id, 'admin', 'UPDATE_CANDIDATE', `Updated candidate ID: ${id}`, req);
@@ -86,18 +86,29 @@ router.put('/:id', authenticateAdmin, async (req, res) => {
   }
 });
 
-// Delete candidate
+// Delete candidate - ACTUAL DELETION FROM DATABASE
 router.delete('/:id', authenticateAdmin, async (req, res) => {
   try {
-    console.log('🗑️ Deactivating candidate ID:', req.params.id, 'by admin:', req.user.email || req.user.id);
+    console.log('🗑️ DELETING candidate ID:', req.params.id, 'by admin:', req.user.email || req.user.id);
     const { id } = req.params;
 
-    await pool.execute('UPDATE candidates SET is_active = false WHERE id = ?', [id]);
+    // Check if candidate exists first
+    const [candidate] = await pool.execute('SELECT * FROM candidates WHERE id = ?', [id]);
+    if (candidate.length === 0) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
 
-    await logAuditAction(req.user.id, 'admin', 'DELETE_CANDIDATE', `Deactivated candidate ID: ${id}`, req);
+    // Perform ACTUAL deletion from database
+    const [result] = await pool.execute('DELETE FROM candidates WHERE id = ?', [id]);
 
-    console.log('✅ Candidate deactivated successfully, ID:', id);
-    res.json({ message: 'Candidate deleted successfully' });
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+
+    await logAuditAction(req.user.id, 'admin', 'DELETE_CANDIDATE', `Permanently deleted candidate ID: ${id}`, req);
+
+    console.log('✅ Candidate PERMANENTLY DELETED, ID:', id);
+    res.json({ message: 'Candidate permanently deleted successfully' });
   } catch (error) {
     console.error('Delete candidate error:', error);
     console.log('❌ Delete candidate error for ID:', req.params.id, error.message);

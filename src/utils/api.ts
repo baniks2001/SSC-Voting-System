@@ -1,99 +1,141 @@
+// utils/api.ts - Fixed and stable version
 const API_BASE_URL = 'http://localhost:5000/api';
+
+// Types for better type safety
+interface ApiError extends Error {
+  status?: number;
+  code?: string;
+  originalError?: unknown;
+}
+
+interface QueueItem {
+  requestFn: () => Promise<any>;
+  resolve: (value: any) => void;
+  reject: (error: any) => void;
+}
+
+interface RequestConfig {
+  timeout?: number;
+  retryCount?: number;
+  skipAuth?: boolean;
+}
 
 class ApiClient {
   private baseUrl: string;
-  private requestQueue: Array<{requestFn: () => Promise<any>, resolve: (value: any) => void, reject: (error: any) => void}> = [];
+  private requestQueue: QueueItem[] = [];
   private processing = false;
-  private readonly maxConcurrent = 3; // Reduced from 10 to 3
+  private readonly maxConcurrent = 3;
   private activeRequests = 0;
   private lastRequestTime = 0;
-  private readonly minRequestInterval = 200; // Minimum 200ms between requests
+  private readonly minRequestInterval = 200;
   private retryCounts = new Map<string, number>();
   private readonly maxRetries = 2;
+  private readonly defaultTimeout = 10000; // 10 seconds
   
   constructor(baseUrl: string) {
-    this.baseUrl = baseUrl;
+    this.baseUrl = baseUrl.replace(/\/$/, ''); // Remove trailing slash
   }
 
-  private getAuthHeaders(): Record<string, string> {
-    const token = localStorage.getItem('token');
+  private createApiError(message: string, status?: number, code?: string, originalError?: unknown): ApiError {
+    const error = new Error(message) as ApiError;
+    error.status = status;
+    error.code = code;
+    error.originalError = originalError;
+    return error;
+  }
+
+  private getAuthHeaders(skipAuth = false): Record<string, string> {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔐 API Client - Auth headers preparation:', { skipAuth });
+    }
+
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
 
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+    if (!skipAuth) {
+      try {
+        const token = localStorage.getItem('token');
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔐 API Client - Token check:', {
+            hasToken: !!token,
+            tokenLength: token?.length,
+            tokenPreview: token ? `${token.substring(0, 10)}...` : 'none'
+          });
+        }
+
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+          if (process.env.NODE_ENV === 'development') {
+            console.log('✅ Token added to Authorization header');
+          }
+        } else {
+          console.warn('⚠️ No token found in localStorage for API request');
+        }
+      } catch (error) {
+        console.error('❌ Error accessing localStorage:', error);
+        // Continue without token rather than failing completely
+      }
     }
 
-    // Add development headers to match your backend middleware
     if (process.env.NODE_ENV === 'development') {
       headers['X-Development-Mode'] = 'true';
-      headers['X-Local-Network'] = 'true';
       headers['X-Client-Type'] = 'browser';
     }
 
     return headers;
   }
 
-  private async processQueue() {
+  private async processQueue(): Promise<void> {
     if (this.processing || this.requestQueue.length === 0) return;
     
     this.processing = true;
     
-    while (this.requestQueue.length > 0 && this.activeRequests < this.maxConcurrent) {
-      const queueItem = this.requestQueue.shift();
-      if (queueItem) {
-        this.activeRequests++;
-        
-        // Rate limiting: ensure minimum time between requests
-        const now = Date.now();
-        const timeSinceLastRequest = now - this.lastRequestTime;
-        if (timeSinceLastRequest < this.minRequestInterval) {
-          await new Promise(resolve => 
-            setTimeout(resolve, this.minRequestInterval - timeSinceLastRequest)
-          );
-        }
+    try {
+      while (this.requestQueue.length > 0 && this.activeRequests < this.maxConcurrent) {
+        const queueItem = this.requestQueue.shift();
+        if (queueItem) {
+          this.activeRequests++;
+          
+          // Rate limiting
+          const now = Date.now();
+          const timeSinceLastRequest = now - this.lastRequestTime;
+          if (timeSinceLastRequest < this.minRequestInterval) {
+            await new Promise(resolve => 
+              setTimeout(resolve, this.minRequestInterval - timeSinceLastRequest)
+            );
+          }
 
-        this.lastRequestTime = Date.now();
-        
-        // Execute the request
-        queueItem.requestFn()
-          .then(queueItem.resolve)
-          .catch(queueItem.reject)
-          .finally(() => {
-            this.activeRequests--;
-            this.processQueue(); // Process next item after completion
-          });
+          this.lastRequestTime = Date.now();
+          
+          queueItem.requestFn()
+            .then(queueItem.resolve)
+            .catch(queueItem.reject)
+            .finally(() => {
+              this.activeRequests--;
+              // Process next items in queue
+              setTimeout(() => this.processQueue(), 0);
+            });
+        }
       }
+    } finally {
+      this.processing = false;
     }
-    
-    this.processing = false;
   }
 
-  private async queuedRequest<T>(requestFn: () => Promise<T>, endpoint: string): Promise<T> {
+  private async queuedRequest<T>(
+    requestFn: () => Promise<T>, 
+    endpoint: string, 
+    config: RequestConfig = {}
+  ): Promise<T> {
     return new Promise((resolve, reject) => {
       this.requestQueue.push({
         requestFn: async () => {
           try {
-            return await requestFn();
-          } catch (error: any) {
-            // Handle rate limiting with exponential backoff
-            if (error?.message?.includes('Rate limit') || error?.message?.includes('429')) {
-              const retryKey = `${endpoint}_${Date.now()}`;
-              const retryCount = this.retryCounts.get(retryKey) || 0;
-              
-              if (retryCount < this.maxRetries) {
-                this.retryCounts.set(retryKey, retryCount + 1);
-                const backoffDelay = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s
-                
-                console.warn(`Rate limit hit for ${endpoint}, retrying in ${backoffDelay}ms (attempt ${retryCount + 1})`);
-                await new Promise(resolve => setTimeout(resolve, backoffDelay));
-                
-                // Retry the request
-                return await requestFn();
-              }
-            }
-            throw error;
+            return await this.executeRequestWithRetry(requestFn, endpoint, config);
+          } catch (error) {
+            throw error; // Re-throw to be caught by the promise chain
           }
         },
         resolve,
@@ -101,177 +143,380 @@ class ApiClient {
       });
       
       if (!this.processing) {
-        this.processQueue();
+        setTimeout(() => this.processQueue(), 0);
       }
     });
   }
 
-  private async handleResponse(response: Response, endpoint: string) {
+  private async executeRequestWithRetry<T>(
+    requestFn: () => Promise<T>,
+    endpoint: string,
+    config: RequestConfig = {}
+  ): Promise<T> {
+    const maxRetries = config.retryCount ?? this.maxRetries;
+    let lastError: ApiError;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        if (attempt > 0) {
+          const backoffDelay = Math.pow(2, attempt) * 1000;
+          console.warn(`🔄 Retry attempt ${attempt}/${maxRetries} for ${endpoint} after ${backoffDelay}ms`);
+          await new Promise(resolve => setTimeout(resolve, backoffDelay));
+        }
+
+        return await requestFn();
+      } catch (error) {
+        lastError = error as ApiError;
+        
+        // Only retry on specific errors
+        const shouldRetry = this.shouldRetryRequest(error, attempt, maxRetries);
+        if (!shouldRetry) {
+          break;
+        }
+        
+        console.warn(`Retrying ${endpoint} (attempt ${attempt + 1}/${maxRetries + 1})`);
+      }
+    }
+
+    throw lastError!;
+  }
+
+  private shouldRetryRequest(error: unknown, attempt: number, maxRetries: number): boolean {
+    if (attempt >= maxRetries) return false;
+
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    // Retry on network-related errors
+    const retryableErrors = [
+      'network',
+      'timeout',
+      'connection',
+      'failed to fetch',
+      'rate limit',
+      '429',
+      '502',
+      '503',
+      '504'
+    ];
+
+    return retryableErrors.some(retryableError => 
+      errorMessage.toLowerCase().includes(retryableError.toLowerCase())
+    );
+  }
+
+  private async fetchWithTimeout(
+    url: string, 
+    options: RequestInit & { timeout?: number } = {}
+  ): Promise<Response> {
+    const { timeout = this.defaultTimeout, ...fetchOptions } = options;
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    try {
+      const response = await fetch(url, {
+        ...fetchOptions,
+        signal: controller.signal,
+      });
+      return response;
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw this.createApiError(`Request timeout after ${timeout}ms`, 408, 'TIMEOUT', error);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  private async handleResponse(response: Response, endpoint: string): Promise<any> {
     if (process.env.NODE_ENV === 'development') {
-      console.log(`API ${response.status}: ${endpoint}`);
+      console.log(`📨 API Response ${response.status}: ${endpoint}`);
+    }
+
+    let responseData;
+    
+    try {
+      // Handle empty responses
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        responseData = await response.json();
+      } else if (response.status === 204) {
+        // No content
+        return null;
+      } else {
+        const text = await response.text();
+        responseData = text || null;
+      }
+    } catch (parseError) {
+      console.error('❌ Failed to parse response:', parseError);
+      throw this.createApiError(
+        `Failed to parse response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`,
+        response.status,
+        'PARSE_ERROR',
+        parseError
+      );
     }
 
     if (!response.ok) {
-      // For 429 errors, throw specific error for retry logic
-      if (response.status === 429) {
-        throw new Error(`Rate limit exceeded for ${endpoint}`);
+      // Handle specific HTTP status codes
+      switch (response.status) {
+        case 401:
+          throw this.createApiError(
+            'Authentication required. Please log in again.',
+            401,
+            'UNAUTHORIZED',
+            responseData
+          );
+        case 403:
+          throw this.createApiError(
+            'Access forbidden. You do not have permission.',
+            403,
+            'FORBIDDEN',
+            responseData
+          );
+        case 404:
+          throw this.createApiError(
+            `Resource not found: ${endpoint}`,
+            404,
+            'NOT_FOUND',
+            responseData
+          );
+        case 429:
+          throw this.createApiError(
+            'Rate limit exceeded. Please try again later.',
+            429,
+            'RATE_LIMITED',
+            responseData
+          );
+        case 500:
+          throw this.createApiError(
+            'Internal server error. Please try again later.',
+            500,
+            'SERVER_ERROR',
+            responseData
+          );
+        case 502:
+        case 503:
+        case 504:
+          throw this.createApiError(
+            'Service temporarily unavailable. Please try again later.',
+            response.status,
+            'SERVICE_UNAVAILABLE',
+            responseData
+          );
+        default:
+          const errorMessage = responseData?.error || 
+                              responseData?.message || 
+                              `HTTP ${response.status}: ${response.statusText}`;
+          throw this.createApiError(
+            errorMessage,
+            response.status,
+            `HTTP_${response.status}`,
+            responseData
+          );
       }
+    }
 
-      try {
-        const error = await response.json().catch(() => ({ error: 'Network error' }));
-        throw new Error(error.error || `HTTP ${response.status}`);
-      } catch (parseError) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    // Handle success response format
+    if (responseData && typeof responseData === 'object') {
+      if (responseData.success !== undefined) {
+        return responseData.data !== undefined ? responseData.data : responseData;
       }
     }
-    
-    const data = await response.json();
-    
-    // Handle structured responses from export endpoint
-    if (data && typeof data === 'object' && data.success !== undefined) {
-      return data.data || data;
-    }
-    
-    return data;
+
+    return responseData;
   }
 
-  async get(endpoint: string) {
+  async get(endpoint: string, config: RequestConfig = {}) {
     return this.queuedRequest(async () => {
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
-        headers: this.getAuthHeaders(),
+      const headers = this.getAuthHeaders(config.skipAuth);
+      const url = `${this.baseUrl}${endpoint}`;
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🔍 GET ${endpoint}`, { headers, url });
+      }
+      
+      const response = await this.fetchWithTimeout(url, {
+        method: 'GET',
+        headers,
+        timeout: config.timeout,
       });
+      
       return this.handleResponse(response, endpoint);
-    }, endpoint);
+    }, endpoint, config);
   }
 
-  async post(endpoint: string, data: any) {
+  async post(endpoint: string, data: any, config: RequestConfig = {}) {
     return this.queuedRequest(async () => {
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      const headers = this.getAuthHeaders(config.skipAuth);
+      const url = `${this.baseUrl}${endpoint}`;
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`📝 POST ${endpoint}`, { headers, data: data ? '***' : 'null', url });
+      }
+      
+      const response = await this.fetchWithTimeout(url, {
         method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(data),
+        headers,
+        body: data ? JSON.stringify(data) : undefined,
+        timeout: config.timeout,
       });
+      
       return this.handleResponse(response, endpoint);
-    }, endpoint);
+    }, endpoint, config);
   }
 
-  async put(endpoint: string, data: any) {
+  async put(endpoint: string, data: any, config: RequestConfig = {}) {
     return this.queuedRequest(async () => {
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      const headers = this.getAuthHeaders(config.skipAuth);
+      const url = `${this.baseUrl}${endpoint}`;
+      
+      const response = await this.fetchWithTimeout(url, {
         method: 'PUT',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(data),
+        headers,
+        body: data ? JSON.stringify(data) : undefined,
+        timeout: config.timeout,
       });
+      
       return this.handleResponse(response, endpoint);
-    }, endpoint);
+    }, endpoint, config);
   }
 
-  async delete(endpoint: string) {
+  async delete(endpoint: string, config: RequestConfig = {}) {
     return this.queuedRequest(async () => {
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      const headers = this.getAuthHeaders(config.skipAuth);
+      const url = `${this.baseUrl}${endpoint}`;
+      
+      const response = await this.fetchWithTimeout(url, {
         method: 'DELETE',
-        headers: this.getAuthHeaders(),
+        headers,
+        timeout: config.timeout,
       });
+      
       return this.handleResponse(response, endpoint);
-    }, endpoint);
+    }, endpoint, config);
   }
 
-  // Batch request method for multiple operations
-  async batch(requests: Array<{method: string, endpoint: string, data?: any}>) {
-    // Process batch requests sequentially to avoid rate limiting
+  async batch(requests: Array<{method: string, endpoint: string, data?: any, config?: RequestConfig}>) {
     const results = [];
-    for (const req of requests) {
+    
+    for (const [index, req] of requests.entries()) {
       try {
         let result;
         switch (req.method.toLowerCase()) {
           case 'get':
-            result = await this.get(req.endpoint);
+            result = await this.get(req.endpoint, req.config);
             break;
           case 'post':
-            result = await this.post(req.endpoint, req.data);
+            result = await this.post(req.endpoint, req.data, req.config);
             break;
           case 'put':
-            result = await this.put(req.endpoint, req.data);
+            result = await this.put(req.endpoint, req.data, req.config);
             break;
           case 'delete':
-            result = await this.delete(req.endpoint);
+            result = await this.delete(req.endpoint, req.config);
             break;
           default:
-            throw new Error(`Unsupported method: ${req.method}`);
+            throw this.createApiError(`Unsupported method: ${req.method}`);
         }
-        results.push(result);
+        results.push({ success: true, data: result });
       } catch (error) {
-        results.push({ error: (error as Error).message });
+        results.push({ 
+          success: false, 
+          error: error instanceof Error ? error.message : 'Unknown error',
+          endpoint: req.endpoint,
+          index 
+        });
       }
       
-      // Add delay between batch requests
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Small delay between batch requests
+      if (index < requests.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
     }
+    
     return results;
   }
 
-  // Get queue stats for monitoring
+  // Utility methods
   getQueueStats() {
     return {
       queueSize: this.requestQueue.length,
       activeRequests: this.activeRequests,
-      maxConcurrent: this.maxConcurrent
+      maxConcurrent: this.maxConcurrent,
+      isProcessing: this.processing
     };
   }
 
-  // Clear queue (useful for logout)
   clearQueue() {
+    // Reject all pending requests
+    this.requestQueue.forEach(item => {
+      item.reject(this.createApiError('Request cancelled due to queue clearance'));
+    });
+    
     this.requestQueue = [];
     this.activeRequests = 0;
     this.processing = false;
     this.retryCounts.clear();
   }
+
+  // Health check method
+  async healthCheck(): Promise<boolean> {
+    try {
+      await this.get('/health', { timeout: 5000, skipAuth: true });
+      return true;
+    } catch {
+      return false;
+    }
+  }
 }
 
+// Create and export API instance
 export const api = new ApiClient(API_BASE_URL);
 
-// Development helper to monitor API performance
+// Development mode enhancements
 if (process.env.NODE_ENV === 'development') {
   let requestCount = 0;
-  const originalGet = api.get.bind(api);
-  const originalPost = api.post.bind(api);
   
-  // Wrap methods to track performance
-  api.get = async function(endpoint: string) {
-    requestCount++;
-    const start = performance.now();
-    try {
-      const result = await originalGet(endpoint);
-      const duration = performance.now() - start;
-      console.log(`✅ API GET ${endpoint} completed in ${duration.toFixed(2)}ms (Request #${requestCount})`);
-      return result;
-    } catch (error) {
-      const duration = performance.now() - start;
-      console.error(`❌ API GET ${endpoint} failed after ${duration.toFixed(2)}ms:`, error);
-      throw error;
-    }
+  // Wrap methods for better logging
+  const wrapWithLogging = <T extends any[]>(
+    originalMethod: (...args: T) => Promise<any>,
+    methodName: string
+  ) => {
+    return async function(...args: T) {
+      requestCount++;
+      const start = performance.now();
+      const endpoint = args[0] as string;
+      
+      try {
+        const result = await originalMethod.apply(api, args);
+        const duration = performance.now() - start;
+        console.log(`✅ API ${methodName.toUpperCase()} ${endpoint} completed in ${duration.toFixed(2)}ms (Request #${requestCount})`);
+        return result;
+      } catch (error) {
+        const duration = performance.now() - start;
+        console.error(`❌ API ${methodName.toUpperCase()} ${endpoint} failed after ${duration.toFixed(2)}ms:`, error);
+        throw error;
+      }
+    };
   };
 
-  api.post = async function(endpoint: string, data: any) {
-    requestCount++;
-    const start = performance.now();
-    try {
-      const result = await originalPost(endpoint, data);
-      const duration = performance.now() - start;
-      console.log(`✅ API POST ${endpoint} completed in ${duration.toFixed(2)}ms (Request #${requestCount})`);
-      return result;
-    } catch (error) {
-      const duration = performance.now() - start;
-      console.error(`❌ API POST ${endpoint} failed after ${duration.toFixed(2)}ms:`, error);
-      throw error;
-    }
-  };
+  // Apply logging to all methods
+  api.get = wrapWithLogging(api.get.bind(api), 'get');
+  api.post = wrapWithLogging(api.post.bind(api), 'post');
+  api.put = wrapWithLogging(api.put.bind(api), 'put');
+  api.delete = wrapWithLogging(api.delete.bind(api), 'delete');
 
-  // Log queue stats periodically
+  // Periodic queue monitoring
   setInterval(() => {
     const stats = api.getQueueStats();
     if (stats.queueSize > 0 || stats.activeRequests > 0) {
-      console.log(`📊 API Queue: ${stats.queueSize} waiting, ${stats.activeRequests} active`);
+      console.log(`📊 API Queue Stats: ${stats.queueSize} waiting, ${stats.activeRequests} active, processing: ${stats.isProcessing}`);
     }
-  }, 10000); // Reduced from 5s to 10s
+  }, 30000); // Reduced frequency to 30 seconds
 }
+
+// Export types for external use
+export type { ApiError, RequestConfig };
+export default api;

@@ -51,7 +51,6 @@ geth --datadir node1 ^
      --pprof.port 6060 ^
      --ipcdisable ^
      --mine ^
-     --miner.threads 1 ^
      --miner.etherbase "0x7e5fde38f1233b19e4b7653a5a335a1e3b97a9e1" ^
      --miner.gasprice 0 ^
      --miner.gaslimit 30000000 ^

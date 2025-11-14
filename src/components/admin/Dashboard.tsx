@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Vote, UserCheck, Activity, Download, Cpu, Play, Pause, StopCircle, RotateCcw, RefreshCw } from 'lucide-react';
+import { Users, Vote, UserCheck, Activity, Download, Cpu, Play, Pause, StopCircle, RotateCcw, RefreshCw, AlertCircle, Shield } from 'lucide-react';
 import { DashboardStats, AuditLog } from '../../types';
 import { api } from '../../utils/api';
 import { usePoll, PollStatus } from '../../contexts/PollContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { LoadingSpinner } from '../common/LoadingSpinner';
+import { SuperAdminModal } from '../common/SuperAdminModal';
 
 export const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -11,9 +13,12 @@ export const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [pollLoading, setPollLoading] = useState(false);
-  const [fetchBlockchain, setFetchBlockchain] = useState(false);
+  const [authError, setAuthError] = useState(false);
+  const [showSuperAdminModal, setShowSuperAdminModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState<PollStatus | 'reset' | null>(null);
 
   const { pollStatus, updatePollStatus, refreshPollStatus, loading: pollStatusLoading } = usePoll();
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     fetchDashboardData();
@@ -21,8 +26,15 @@ export const Dashboard: React.FC = () => {
 
   const fetchDashboardData = async () => {
     try {
+      setAuthError(false);
       const [dashboardResponse, blockchainResponse] = await Promise.all([
-        api.get('/admin/dashboard'),
+        api.get('/admin/dashboard').catch(error => {
+          if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+            setAuthError(true);
+            throw new Error('Authentication failed. Please login again.');
+          }
+          throw error;
+        }),
         api.get('/voting/blockchain-status').catch(() => null)
       ]);
 
@@ -30,20 +42,32 @@ export const Dashboard: React.FC = () => {
       setBlockchainInfo(blockchainResponse);
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
+      if (error.message.includes('Authentication failed')) {
+        setAuthError(true);
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  const handleReauthenticate = () => {
+    localStorage.removeItem('token');
+    logout();
+  };
+
   const handlePollControl = async (action: PollStatus) => {
+    // Check if action requires superadmin
+    if ((action === 'finished' || action === 'not_started') && user?.role !== 'super_admin') {
+      setPendingAction(action);
+      setShowSuperAdminModal(true);
+      return;
+    }
+
     setPollLoading(true);
     try {
       await updatePollStatus(action);
-      
-      // Refresh dashboard data to get updated stats
       await fetchDashboardData();
       
-      // Show success message
       const actionMessages = {
         'active': 'Voting started successfully! Students can now login and vote.',
         'paused': 'Voting paused successfully! Student login is now disabled.',
@@ -52,8 +76,6 @@ export const Dashboard: React.FC = () => {
       };
       
       console.log(actionMessages[action]);
-      
-      // Show alert to user
       alert(actionMessages[action]);
     } catch (error: any) {
       console.error('Failed to update poll status:', error);
@@ -64,21 +86,69 @@ export const Dashboard: React.FC = () => {
   };
 
   const handleResetPoll = async () => {
-    if (!window.confirm('Are you sure you want to reset the poll? This will clear all votes and reset everything!')) {
+    if (!window.confirm('Are you sure you want to reset the poll? This will clear all votes but preserve blockchain data.')) {
       return;
     }
 
+    // Check if user is superadmin
+    if (user?.role !== 'super_admin') {
+      setPendingAction('reset');
+      setShowSuperAdminModal(true);
+      return;
+    }
+
+    await performResetPoll();
+  };
+
+  const performResetPoll = async (password?: string) => {
     setPollLoading(true);
     try {
-      await api.post('/poll/reset');
+      const payload = password ? { superAdminPassword: password } : {};
+      await api.post('/poll/reset', payload);
       await updatePollStatus('not_started');
       await fetchDashboardData();
-      alert('Poll reset successfully! All votes have been cleared.');
+      alert('Poll reset successfully! All votes have been cleared (blockchain data preserved).');
     } catch (error: any) {
       console.error('Failed to reset poll:', error);
       alert(`Failed to reset poll: ${error.message}`);
     } finally {
       setPollLoading(false);
+      setShowSuperAdminModal(false);
+      setPendingAction(null);
+    }
+  };
+
+  const handleSuperAdminConfirm = async (password: string) => {
+    if (pendingAction === 'reset') {
+      await performResetPoll(password);
+    } else if (pendingAction && ['finished', 'not_started'].includes(pendingAction)) {
+      await performPollControl(pendingAction as PollStatus, password);
+    }
+  };
+
+  const performPollControl = async (action: PollStatus, password?: string) => {
+    setPollLoading(true);
+    try {
+      const payload = password ? { superAdminPassword: password } : {};
+      await api.post(`/poll/${action}`, payload);
+      await updatePollStatus(action);
+      await fetchDashboardData();
+      
+      const actionMessages = {
+        'active': 'Voting started successfully! Students can now login and vote.',
+        'paused': 'Voting paused successfully! Student login is now disabled.',
+        'finished': 'Voting finished successfully! The poll is now closed.',
+        'not_started': 'Poll reset successfully! Voting is not started.'
+      };
+      
+      alert(actionMessages[action]);
+    } catch (error: any) {
+      console.error('Failed to update poll status:', error);
+      alert(`Failed to update poll status: ${error.message}`);
+    } finally {
+      setPollLoading(false);
+      setShowSuperAdminModal(false);
+      setPendingAction(null);
     }
   };
 
@@ -120,7 +190,6 @@ export const Dashboard: React.FC = () => {
 
     setExporting(true);
     try {
-      // Create CSV content
       const headers = ['Timestamp', 'Action', 'User Type', 'User ID', 'Details'];
       const csvContent = [
         headers.join(','),
@@ -133,7 +202,6 @@ export const Dashboard: React.FC = () => {
         ].join(','))
       ].join('\n');
 
-      // Create and download file
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
@@ -151,6 +219,26 @@ export const Dashboard: React.FC = () => {
     }
   };
 
+  const isSuperAdmin = user?.role === 'super_admin';
+
+  if (authError) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Authentication Error</h3>
+          <p className="text-gray-600 mb-4">Your session has expired or is invalid.</p>
+          <button
+            onClick={handleReauthenticate}
+            className="btn-primary"
+          >
+            Login Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -162,10 +250,11 @@ export const Dashboard: React.FC = () => {
   if (!stats) {
     return (
       <div className="text-center py-8">
-        <p className="text-red-600">Failed to load dashboard data</p>
+        <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+        <p className="text-red-600 mb-4">Failed to load dashboard data</p>
         <button 
           onClick={fetchDashboardData}
-          className="mt-4 btn-primary"
+          className="btn-primary"
         >
           Retry
         </button>
@@ -175,6 +264,16 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fadeIn">
+      <SuperAdminModal
+        isOpen={showSuperAdminModal}
+        onClose={() => {
+          setShowSuperAdminModal(false);
+          setPendingAction(null);
+        }}
+        onConfirm={handleSuperAdminConfirm}
+        action={pendingAction || ''}
+      />
+
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
@@ -190,7 +289,6 @@ export const Dashboard: React.FC = () => {
         </button>
       </div>
 
-      {/* Poll Controls */}
       <div className="card">
         <div className="card-header">
           <h2 className="text-lg font-semibold text-gray-900">Poll Controls</h2>
@@ -251,18 +349,21 @@ export const Dashboard: React.FC = () => {
                 onClick={handleResetPoll}
                 disabled={pollLoading}
                 className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title={!isSuperAdmin ? "Requires Super Admin privileges" : "Reset poll and clear votes"}
               >
                 {pollLoading ? (
                   <LoadingSpinner size="sm" />
                 ) : (
-                  <RotateCcw className="w-4 h-4 mr-2" />
+                  <>
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    {!isSuperAdmin && <Shield className="w-4 h-4 mr-1 text-red-500" />}
+                  </>
                 )}
-                Reset Poll
+                Reset Poll {!isSuperAdmin && "(Super Admin)"}
               </button>
             </div>
           </div>
           
-          {/* Status Description */}
           <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
             <p className="text-sm text-blue-800 font-medium mb-1">
               Current Status: {pollStatus.replace('_', ' ').toUpperCase()}
@@ -280,7 +381,6 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Blockchain Status */}
       {blockchainInfo && (
         <div className="card">
           <div className="card-header">
@@ -339,7 +439,6 @@ export const Dashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Stats Cards */}
       <div className="responsive-grid">
         <div className="stats-card stats-card-blue">
           <div className="flex items-center justify-between">
@@ -391,7 +490,6 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Audit Logs */}
       <div className="card">
         <div className="card-header flex justify-between items-center">
           <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>

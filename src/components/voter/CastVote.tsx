@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Vote, Users, CheckCircle, ArrowRight, User, LogOut } from 'lucide-react';
-import { Candidate } from '../../types';
+import { Candidate, Position } from '../../types';
 import { api } from '../../utils/api';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { useToast } from '../common/Toast';
@@ -14,7 +14,8 @@ interface CastVoteProps {
 
 export const CastVote: React.FC<CastVoteProps> = ({ onVoteCast, onShowReceipt, onLogout }) => {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [selectedVotes, setSelectedVotes] = useState<{ [position: string]: number }>({});
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [selectedVotes, setSelectedVotes] = useState<{ [position: string]: number[] }>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showReview, setShowReview] = useState(false);
@@ -22,49 +23,62 @@ export const CastVote: React.FC<CastVoteProps> = ({ onVoteCast, onShowReceipt, o
   const { showToast } = useToast();
 
   useEffect(() => {
-    fetchCandidates();
+    fetchData();
   }, []);
 
-  const fetchCandidates = async () => {
+  const fetchData = async () => {
     try {
-      const response = await api.get('/candidates');
-      setCandidates(response);
+      const [candidatesResponse, positionsResponse] = await Promise.all([
+        api.get('/candidates'),
+        api.get('/positions')
+      ]);
+      setCandidates(candidatesResponse);
+      setPositions(positionsResponse.sort((a: Position, b: Position) => a.order - b.order));
     } catch (error: any) {
-      showToast('error', 'Failed to load candidates');
+      showToast('error', 'Failed to load voting data');
     } finally {
       setLoading(false);
     }
   };
 
-  // Get unique positions from candidates data
-  const positions = [...new Set(candidates.map(c => c.position))];
-
-  const handleCandidateSelect = (position: string, candidateId: number) => {
+  const handleCandidateSelect = (position: string, candidateId: number, maxVotes: number) => {
     setSelectedVotes(prev => {
-      // If already selected, unselect it
-      if (prev[position] === candidateId) {
-        const newVotes = { ...prev };
-        delete newVotes[position];
-        return newVotes;
+      const currentSelected = prev[position] || [];
+
+      // If candidate is already selected, remove it
+      if (currentSelected.includes(candidateId)) {
+        return {
+          ...prev,
+          [position]: currentSelected.filter(id => id !== candidateId)
+        };
       }
-      // Otherwise select it
+
+      // If max votes reached, don't add new selection
+      if (currentSelected.length >= maxVotes) {
+        showToast('warning', `You can only select up to ${maxVotes} candidate(s) for ${position}`);
+        return prev;
+      }
+
+      // Add new selection
       return {
         ...prev,
-        [position]: candidateId
+        [position]: [...currentSelected, candidateId]
       };
     });
   };
 
   const handleReviewVote = () => {
-    // Check if all positions have selections based on available candidates
-    const positionsWithCandidates = positions.filter(position => 
-      candidates.some(candidate => candidate.position === position)
-    );
-    
-    if (Object.keys(selectedVotes).length !== positionsWithCandidates.length) {
-      showToast('warning', 'Please select a candidate for each position');
+    // Check if all positions have at least the minimum required selections
+    const hasAllRequiredSelections = positions.every(position => {
+      const selectedForPosition = selectedVotes[position.name] || [];
+      return selectedForPosition.length > 0;
+    });
+
+    if (!hasAllRequiredSelections) {
+      showToast('warning', 'Please select at least one candidate for each position');
       return;
     }
+
     setShowReview(true);
   };
 
@@ -81,7 +95,6 @@ export const CastVote: React.FC<CastVoteProps> = ({ onVoteCast, onShowReceipt, o
   };
 
   const confirmLogout = () => {
-    // Call the logout function passed from parent
     onLogout();
     setShowLogoutConfirm(false);
   };
@@ -90,33 +103,46 @@ export const CastVote: React.FC<CastVoteProps> = ({ onVoteCast, onShowReceipt, o
     setShowLogoutConfirm(false);
   };
 
+  const getSelectedCountForPosition = (positionName: string) => {
+    return (selectedVotes[positionName] || []).length;
+  };
+
+  const getMaxVotesForPosition = (positionName: string) => {
+    const position = positions.find(p => p.name === positionName);
+    return position?.maxVotes || 1;
+  };
+
+  const isCandidateSelected = (position: string, candidateId: number) => {
+    return (selectedVotes[position] || []).includes(candidateId);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8 text-center">
-          <LoadingSpinner size="lg" text="Loading candidates..." />
+          <LoadingSpinner size="lg" text="Loading voting data..." />
         </div>
       </div>
     );
   }
 
-  // Show Review Screen
+  // In CastVote.tsx, update the ReviewVote usage:
   if (showReview) {
     return (
       <ReviewVote
         selectedVotes={selectedVotes}
         candidates={candidates}
+        positions={positions}
         onBack={handleBackToVoting}
-        onConfirm={handleConfirmVote}
+        onVoteCast={onVoteCast} // Change from onConfirm to onVoteCast
+        onLogout={onLogout} // Add this prop
         loading={submitting}
       />
     );
   }
 
-  // Calculate positions that actually have candidates
-  const positionsWithCandidates = positions.filter(position => 
-    candidates.some(candidate => candidate.position === position)
-  );
+  const totalSelected = Object.values(selectedVotes).reduce((sum, votes) => sum + votes.length, 0);
+  const totalPossible = positions.reduce((sum, position) => sum + position.maxVotes, 0);
 
   return (
     <div className="min-h-screen bg-white py-4 px-3 sm:px-4 lg:px-6">
@@ -131,13 +157,13 @@ export const CastVote: React.FC<CastVoteProps> = ({ onVoteCast, onShowReceipt, o
                 </div>
                 <div>
                   <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Cast Your Vote</h1>
-                  <p className="text-gray-600">Select one candidate for each position</p>
+                  <p className="text-gray-600">Select candidates for each position</p>
                 </div>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="bg-blue-50 rounded-lg px-3 py-2">
                   <span className="text-sm font-semibold text-blue-800">
-                    {Object.keys(selectedVotes).length} of {positionsWithCandidates.length} selected
+                    {totalSelected} of {totalPossible} selected
                   </span>
                 </div>
                 <button
@@ -154,23 +180,27 @@ export const CastVote: React.FC<CastVoteProps> = ({ onVoteCast, onShowReceipt, o
 
         {/* Candidates Grid */}
         <div className="space-y-6">
-          {positionsWithCandidates.map((position) => {
-            const positionCandidates = candidates.filter(candidate => candidate.position === position);
-            const selectedCandidateId = selectedVotes[position];
-            
+          {positions.map((position) => {
+            const positionCandidates = candidates.filter(candidate => candidate.position === position.name);
+            const selectedCount = getSelectedCountForPosition(position.name);
+            const maxVotes = getMaxVotesForPosition(position.name);
+
             return (
-              <div key={position} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+              <div key={position.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
                 {/* Position Header */}
                 <div className="bg-gray-50 border-b border-gray-200 p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <Users className="w-5 h-5 text-blue-800" />
-                      <h2 className="text-lg font-semibold text-gray-900">{position}</h2>
+                      <h2 className="text-lg font-semibold text-gray-900">{position.name}</h2>
                     </div>
                     <div className="flex items-center space-x-2">
-                      {selectedCandidateId && (
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium">
+                        {selectedCount}/{maxVotes} selected
+                      </span>
+                      {selectedCount === maxVotes && (
                         <span className="text-xs text-green-600 font-medium bg-green-50 px-2 py-1 rounded">
-                          Selected ✓
+                          Maximum reached
                         </span>
                       )}
                       <span className="text-sm text-gray-600">
@@ -178,6 +208,11 @@ export const CastVote: React.FC<CastVoteProps> = ({ onVoteCast, onShowReceipt, o
                       </span>
                     </div>
                   </div>
+                  {maxVotes > 1 && (
+                    <p className="text-sm text-gray-600 mt-2">
+                      You can select up to {maxVotes} candidate(s) for this position
+                    </p>
+                  )}
                 </div>
 
                 {/* Candidates */}
@@ -186,22 +221,16 @@ export const CastVote: React.FC<CastVoteProps> = ({ onVoteCast, onShowReceipt, o
                     {positionCandidates.map((candidate) => (
                       <div
                         key={candidate.id}
-                        onClick={() => handleCandidateSelect(position, candidate.id)}
-                        className={`p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer ${
-                          selectedVotes[position] === candidate.id
+                        onClick={() => handleCandidateSelect(position.name, candidate.id, maxVotes)}
+                        className={`p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer ${isCandidateSelected(position.name, candidate.id)
                             ? 'border-blue-800 bg-blue-50 shadow-lg'
                             : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center space-x-3">
-                          <img
-                            src={candidate.image_url || '/default-avatar.png'}
-                            alt={candidate.name}
-                            className="w-12 h-12 rounded-full object-cover border-2 border-gray-300"
-                            onError={(e) => {
-                              e.currentTarget.src = '/default-avatar.png';
-                            }}
-                          />
+                          <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+                            <User className="w-6 h-6 text-gray-500" />
+                          </div>
                           <div className="flex-1 min-w-0">
                             <h3 className="font-semibold text-gray-900 text-sm sm:text-base truncate">
                               {candidate.name}
@@ -212,12 +241,11 @@ export const CastVote: React.FC<CastVoteProps> = ({ onVoteCast, onShowReceipt, o
                             {candidate.manifesto && (
                               <p className="text-gray-700 text-xs mt-1 line-clamp-1">
                                 {candidate.manifesto}
-                                  
                               </p>
                             )}
                           </div>
                           <div className="flex items-center space-x-2">
-                            {selectedVotes[position] === candidate.id && (
+                            {isCandidateSelected(position.name, candidate.id) && (
                               <div className="w-6 h-6 bg-blue-800 rounded-full flex items-center justify-center flex-shrink-0">
                                 <CheckCircle className="w-4 h-4 text-white" />
                               </div>
@@ -238,18 +266,24 @@ export const CastVote: React.FC<CastVoteProps> = ({ onVoteCast, onShowReceipt, o
           <div className="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0">
             <div className="text-center sm:text-left">
               <p className="text-sm text-gray-600">
-                {Object.keys(selectedVotes).length} of {positionsWithCandidates.length} positions selected
+                {totalSelected} of {totalPossible} total selections made
               </p>
-              {Object.keys(selectedVotes).length === positionsWithCandidates.length && (
-                <p className="text-xs text-green-600 font-medium mt-1">
-                  ✓ Ready to submit your vote
-                </p>
-              )}
+              {positions.every(position => {
+                const selected = selectedVotes[position.name] || [];
+                return selected.length > 0;
+              }) && (
+                  <p className="text-xs text-green-600 font-medium mt-1">
+                    ✓ Ready to submit your vote
+                  </p>
+                )}
             </div>
             <button
               onClick={handleReviewVote}
               className="flex items-center space-x-2 bg-blue-800 hover:bg-blue-900 text-white py-3 px-5 rounded-lg transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={Object.keys(selectedVotes).length !== positionsWithCandidates.length}
+              disabled={!positions.every(position => {
+                const selected = selectedVotes[position.name] || [];
+                return selected.length > 0;
+              })}
             >
               <span>Review Vote</span>
               <ArrowRight className="w-4 h-4" />

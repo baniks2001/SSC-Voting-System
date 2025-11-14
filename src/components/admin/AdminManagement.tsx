@@ -109,6 +109,10 @@ export const AdminManagement: React.FC = () => {
     }
   };
 
+  const canControlPoll = (admin: Admin) => {
+    return admin.role === 'admin' || admin.role === 'poll_monitor';
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -164,6 +168,7 @@ export const AdminManagement: React.FC = () => {
                   <th>Admin Details</th>
                   <th>Role</th>
                   <th>Status</th>
+                  <th>Poll Access</th>
                   <th>Created</th>
                   <th>Actions</th>
                 </tr>
@@ -171,7 +176,7 @@ export const AdminManagement: React.FC = () => {
               <tbody>
                 {filteredAdmins.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-8 text-gray-500">
+                    <td colSpan={6} className="text-center py-8 text-gray-500">
                       No admins found
                     </td>
                   </tr>
@@ -197,6 +202,11 @@ export const AdminManagement: React.FC = () => {
                       <td>
                         <span className={`badge ${admin.is_active ? 'badge-success' : 'badge-danger'}`}>
                           {admin.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`badge ${canControlPoll(admin) ? 'badge-success' : 'badge-gray'}`}>
+                          {canControlPoll(admin) ? 'Can Control Poll' : 'View Only'}
                         </span>
                       </td>
                       <td className="text-sm text-gray-600">
@@ -283,9 +293,9 @@ export const AdminManagement: React.FC = () => {
               className="form-input"
               required
             >
-              <option value="admin">Admin</option>
-              <option value="auditor">Auditor</option>
-              <option value="poll_monitor">Poll Monitor</option>
+              <option value="admin">Admin (Full Access + Poll Control)</option>
+              <option value="auditor">Auditor (View Only)</option>
+              <option value="poll_monitor">Poll Monitor (Poll Control Only)</option>
             </select>
           </div>
 
@@ -357,12 +367,20 @@ export const AdminManagement: React.FC = () => {
                 </p>
               </div>
               <div>
+                <label className="text-sm font-medium text-gray-700">Poll Access</label>
+                <p className="mt-1">
+                  <span className={`badge ${canControlPoll(viewingAdmin) ? 'badge-success' : 'badge-gray'}`}>
+                    {canControlPoll(viewingAdmin) ? 'Can Control Poll' : 'View Only'}
+                  </span>
+                </p>
+              </div>
+              <div>
                 <label className="text-sm font-medium text-gray-700">Created</label>
                 <p className="mt-1 text-sm text-gray-900">
                   {new Date(viewingAdmin.created_at).toLocaleString()}
                 </p>
               </div>
-              <div>
+              <div className="col-span-2">
                 <label className="text-sm font-medium text-gray-700">Admin ID</label>
                 <p className="mt-1 text-sm text-gray-900">#{viewingAdmin.id}</p>
               </div>

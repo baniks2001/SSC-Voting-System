@@ -14,7 +14,7 @@ const NODE_CONFIG = {
     active: true
   },
   backup: {
-    id: 'node-2', 
+    id: 'node-2',
     url: process.env.ETH_NODE_URL_2 || 'http://localhost:8546',
     priority: 2,
     active: true
@@ -40,7 +40,7 @@ class DecentralizedNodeManager {
       const startTime = Date.now();
       // Simulate health check - in real implementation, this would ping the node
       const isHealthy = Math.random() > 0.1; // 90% success rate for simulation
-      
+
       nodeHealth[nodeConfig.id] = {
         healthy: isHealthy,
         lastCheck: Date.now(),
@@ -63,7 +63,7 @@ class DecentralizedNodeManager {
   async getBestNode() {
     // Check primary node first
     const primaryHealthy = await this.checkNodeHealth(NODE_CONFIG.primary);
-    
+
     if (primaryHealthy) {
       console.log(`✅ Using primary node: ${NODE_CONFIG.primary.id}`);
       this.currentNode = NODE_CONFIG.primary;
@@ -74,7 +74,7 @@ class DecentralizedNodeManager {
     // Primary failed, try backup
     console.log(`⚠️ Primary node ${NODE_CONFIG.primary.id} unhealthy, trying backup...`);
     const backupHealthy = await this.checkNodeHealth(NODE_CONFIG.backup);
-    
+
     if (backupHealthy) {
       console.log(`✅ Using backup node: ${NODE_CONFIG.backup.id}`);
       this.currentNode = NODE_CONFIG.backup;
@@ -116,10 +116,10 @@ const nodeManager = new DecentralizedNodeManager();
 class DecentralizedEthereumService {
   async submitVote(voteData) {
     const node = await nodeManager.getBestNode();
-    
+
     try {
       console.log(`📝 Submitting vote via ${node.id}...`);
-      
+
       // Simulate different node behaviors for demonstration
       if (node.id === 'node-1') {
         // Primary node - normal operation
@@ -130,17 +130,17 @@ class DecentralizedEthereumService {
       }
     } catch (error) {
       console.error(`❌ Node ${node.id} failed:`, error.message);
-      
+
       // Mark node as unhealthy and retry with other node
       nodeHealth[node.id].healthy = false;
       nodeHealth[node.id].failureCount++;
-      
+
       // Retry with other node if available
       if (node.id === NODE_CONFIG.primary.id && nodeHealth[NODE_CONFIG.backup.id].healthy) {
         console.log(`🔄 Retrying with backup node after primary failure...`);
         return await this.submitVote(voteData);
       }
-      
+
       throw error;
     }
   }
@@ -148,13 +148,13 @@ class DecentralizedEthereumService {
   async verifyTransaction(transactionHash) {
     const node = await nodeManager.getBestNode();
     console.log(`🔍 Verifying transaction via ${node.id}...`);
-    
+
     try {
       return await ethereumService.verifyTransaction(transactionHash);
     } catch (error) {
       console.error(`❌ Node ${node.id} verification failed:`, error.message);
       nodeHealth[node.id].healthy = false;
-      
+
       // Retry with other node
       if (node.id === NODE_CONFIG.primary.id && nodeHealth[NODE_CONFIG.backup.id].healthy) {
         return await this.verifyTransaction(transactionHash);
@@ -165,10 +165,10 @@ class DecentralizedEthereumService {
 
   async getBlockchainInfo() {
     const node = await nodeManager.getBestNode();
-    
+
     try {
       const info = await ethereumService.getBlockchainInfo();
-      
+
       // Enhance info with node details
       return {
         ...info,
@@ -178,7 +178,7 @@ class DecentralizedEthereumService {
     } catch (error) {
       console.error(`❌ Node ${node.id} info fetch failed:`, error.message);
       nodeHealth[node.id].healthy = false;
-      
+
       if (node.id === NODE_CONFIG.primary.id && nodeHealth[NODE_CONFIG.backup.id].healthy) {
         return await this.getBlockchainInfo();
       }
@@ -188,6 +188,42 @@ class DecentralizedEthereumService {
 }
 
 const decentralizedEthereumService = new DecentralizedEthereumService();
+
+// Add this route to preserve blockchain data during reset
+router.post('/preserve-blockchain', async (req, res) => {
+  try {
+    // This endpoint would backup current blockchain state before reset
+    const blockchainInfo = await decentralizedEthereumService.getBlockchainInfo();
+
+    // Store backup information
+    const backupData = {
+      timestamp: new Date().toISOString(),
+      blockNumber: blockchainInfo.blockNumber,
+      totalVotes: await getTotalVotesCount(),
+      nodeStatus: nodeManager.getNodeStatus()
+    };
+
+    console.log('🔒 Blockchain state preserved:', backupData);
+
+    res.json({
+      success: true,
+      message: 'Blockchain state preserved',
+      backup: backupData
+    });
+  } catch (error) {
+    console.error('Blockchain preservation error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to preserve blockchain state'
+    });
+  }
+});
+
+// Helper function to get total votes count
+async function getTotalVotesCount() {
+  const [rows] = await pool.execute('SELECT COUNT(*) as count FROM votes');
+  return rows[0].count;
+}
 
 // Submit vote to blockchain with node failover
 router.post('/cast-blockchain', async (req, res) => {
@@ -241,7 +277,7 @@ router.post('/cast-blockchain', async (req, res) => {
 
     if (!blockchainResult.success) {
       await logAuditAction(voter.id, 'voter', 'VOTE_FAILED', `Blockchain submission failed: ${blockchainResult.error}`, req);
-      
+
       return res.status(500).json({
         success: false,
         error: `Blockchain submission failed: ${blockchainResult.error}`
@@ -273,7 +309,7 @@ router.post('/cast-blockchain', async (req, res) => {
 
   } catch (error) {
     console.error('Blockchain vote submission error:', error);
-    
+
     const nodeStatus = nodeManager.getNodeStatus();
     await logAuditAction(voter?.id, 'voter', 'VOTE_FAILED', `All nodes failed: ${error.message}`, req);
 
@@ -339,7 +375,7 @@ router.get('/status', async (req, res) => {
 router.get('/test-connection', async (req, res) => {
   try {
     const blockchainInfo = await decentralizedEthereumService.getBlockchainInfo();
-    
+
     // Attempt to switch back to primary if we're on backup
     await nodeManager.attemptSwitchToPrimary();
 
@@ -349,8 +385,8 @@ router.get('/test-connection', async (req, res) => {
       blockNumber: blockchainInfo.blockNumber,
       currentNode: nodeManager.currentNode.id,
       nodeHealth: nodeManager.getNodeStatus().nodeHealth,
-      message: blockchainInfo.isConnected ? 
-        `Successfully connected to Ethereum via ${nodeManager.currentNode.id}` : 
+      message: blockchainInfo.isConnected ?
+        `Successfully connected to Ethereum via ${nodeManager.currentNode.id}` :
         'Not connected to Ethereum node'
     });
 

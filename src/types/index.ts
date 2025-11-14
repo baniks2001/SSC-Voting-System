@@ -29,6 +29,17 @@ export interface Candidate {
   updated_at?: string;
 }
 
+// NEW: Position interface for managing positions and voting limits
+export interface Position {
+  id: number;
+  name: string;
+  maxVotes: number;
+  order: number;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface Voter {
   id: number;
   student_id: string;
@@ -63,6 +74,7 @@ export interface Vote {
   position: string;
 }
 
+// UPDATED: VoteReceipt to handle multiple votes per position
 export interface VoteReceipt {
   voteHash: string;
   votedAt: string;
@@ -74,13 +86,19 @@ export interface VoteReceipt {
   blockchainNode?: string;           // NEW: Which node processed this
   blockNumber?: number;              // NEW: Block number on chain
   gasUsed?: string;                  // NEW: Gas used for transaction
+  positions?: Position[];            // NEW: Position information for the vote
 }
 
-// NEW: Enhanced Blockchain types
+// NEW: Enhanced VoteSelection for multiple candidates per position
+export interface VoteSelection {
+  [position: string]: number[];      // Array of candidate IDs for each position
+}
+
+// NEW: Enhanced Blockchain types with multiple votes support
 export interface BlockchainVote {
   studentId: string;
   receiptId: string;
-  votes: string;
+  votes: string;                     // JSON string of VoteSelection
   timestamp: number;
   transactionHash: string;
   blockNumber?: number;
@@ -92,7 +110,7 @@ export interface BlockchainVote {
 export interface VoteVerification {
   studentId: string;
   receiptId: string;
-  votes: string;
+  votes: string;                     // JSON string of VoteSelection
   timestamp: number;
   verified: boolean;
   blockNumber?: number;
@@ -118,6 +136,7 @@ export interface DashboardStats {
   totalVoters: number;
   totalCandidates: number;
   totalVotes: number;
+  totalPositions?: number;           // NEW: Total positions count
   auditLogs: AuditLog[];
   blockchainStats?: {                // NEW: Blockchain-specific stats
     totalBlockchainVotes: number;
@@ -136,13 +155,15 @@ export interface PollSettings {
   end_time?: string;
   paused_at?: string;
   blockchain_enabled?: boolean;      // NEW: Whether blockchain is enabled
+  max_votes_per_position?: number;   // NEW: Default max votes per position
 }
 
-// Enhanced PollResults with better blockchain info
+// Enhanced PollResults with better blockchain info and position data
 export interface PollResults {
   candidates: Candidate[];
   totalVotes: number;
   lastUpdated: string;
+  positions?: Position[];            // NEW: Position information
   blockchainInfo?: {
     isConnected: boolean;
     node: string;
@@ -208,7 +229,7 @@ export interface BlockchainNetworkStatus {
   connectedNodes: number;
 }
 
-// NEW: Blockchain Transaction Receipt
+// NEW: Blockchain Transaction Receipt with multiple votes support
 export interface BlockchainReceipt {
   transactionHash: string;
   blockNumber: string;
@@ -219,6 +240,7 @@ export interface BlockchainReceipt {
   simulated: boolean;
   ballotId?: string;
   status?: 'success' | 'failed' | 'pending';
+  voteData?: VoteSelection;          // NEW: The actual vote data
 }
 
 // NEW: Blockchain Vote Submission Result
@@ -237,13 +259,14 @@ export interface BlockchainVoteResult {
   };
 }
 
-// NEW: Vote data for blockchain submission
+// NEW: Vote data for blockchain submission with multiple votes support
 export interface BlockchainVoteData {
   voterId: string;
-  votes: Vote[];
+  votes: VoteSelection;              // UPDATED: Now supports multiple votes per position
   timestamp: string;
   ballotId: string;
   voterHash: string;
+  positions?: Position[];            // NEW: Position information for validation
 }
 
 // NEW: Error types for blockchain operations
@@ -254,12 +277,14 @@ export interface BlockchainError {
   transactionHash?: string;
 }
 
-// NEW: Election results from blockchain
+// NEW: Election results from blockchain with position-based results
 export interface BlockchainElectionResults {
   results: {
     [position: string]: {
       [candidateId: string]: {
         candidateId: string;
+        candidateName: string;
+        party: string;
         voteCount: number;
       };
     };
@@ -267,15 +292,17 @@ export interface BlockchainElectionResults {
   totalVotes: number;
   voteData: BlockchainVote[];
   lastBlockNumber: number;
+  positions?: Position[];            // NEW: Position information
 }
 
-// NEW: Verification result
+// NEW: Verification result with multiple votes support
 export interface VerificationResult {
   exists: boolean;
   details: BlockchainVote | null;
   confirmations: number;
   verified: boolean;
   node?: string;
+  voteData?: VoteSelection;          // NEW: The actual vote data
 }
 
 // NEW: Node status for monitoring
@@ -300,4 +327,45 @@ export interface MultiNodeStatus {
   connectedNodes: number;
   primaryNode?: string;
   loadBalancing: 'round-robin' | 'priority' | 'fallback';
+}
+
+// NEW: Position management types
+export interface PositionFormData {
+  name: string;
+  maxVotes: number;
+  order: number;
+}
+
+export interface CandidateFormData {
+  name: string;
+  party: string;
+  position: string;
+}
+
+// NEW: Voting progress interface
+export interface VotingProgress {
+  totalPositions: number;
+  completedPositions: number;
+  totalSelections: number;
+  maxSelections: number;
+  positions: {
+    [positionName: string]: {
+      selected: number;
+      max: number;
+      completed: boolean;
+    };
+  };
+}
+
+// NEW: Review vote interface
+export interface ReviewVoteData {
+  selectedVotes: VoteSelection;
+  candidates: Candidate[];
+  positions: Position[];
+  timestamp: string;
+  voterInfo: {
+    studentId: string;
+    fullName: string;
+    course: string;
+  };
 }

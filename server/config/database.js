@@ -1,3 +1,4 @@
+// config/database.js - Fixed MySQL2 configuration (only valid options)
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 
@@ -8,18 +9,21 @@ const dbConfig = {
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'student_voting_system',
-  port: process.env.DB_PORT || 3306,
+  port: parseInt(process.env.DB_PORT) || 3306,
+  
+  // ONLY VALID MySQL2 connection options
   waitForConnections: true,
-  connectionLimit: 20, // Increased connection limit
-  queueLimit: 100, // Increased queue limit
-  acquireTimeout: 30000, // 30 seconds acquire timeout
-  timeout: 60000, // 60 seconds timeout
-  reconnect: true,
-  // Connection pool settings to prevent leaks
-  idleTimeout: 60000, // Close idle connections after 60 seconds
-  maxIdle: 10, // Maximum number of idle connections
+  connectionLimit: 20,
+  queueLimit: 100,
+  idleTimeout: 60000,
+  maxIdle: 10,
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
+  
+  // REMOVED ALL INVALID OPTIONS:
+  // acquireTimeout: 30000, - INVALID
+  // timeout: 60000, - INVALID
+  // reconnect: true, - INVALID
 };
 
 export const pool = mysql.createPool(dbConfig);
@@ -137,5 +141,7 @@ export const getConnectionStats = () => {
 // Log connection stats periodically
 setInterval(() => {
   const stats = getConnectionStats();
-  console.log(`📊 Database connections - Active: ${stats.active}, Idle: ${stats.idle}, Queue: ${stats.queue}`);
+  if (stats.active > 0 || stats.queue > 0) {
+    console.log(`📊 Database connections - Active: ${stats.active}, Idle: ${stats.idle}, Queue: ${stats.queue}`);
+  }
 }, 60000); // Log every minute

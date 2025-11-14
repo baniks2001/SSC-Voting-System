@@ -1,4 +1,4 @@
-// contexts/AuthContext.tsx
+// contexts/AuthContext.tsx - FIXED VERSION
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '../types';
 import { api } from '../utils/api';
@@ -6,7 +6,7 @@ import { api } from '../utils/api';
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string, isAdmin?: boolean) => Promise<void>;
+  login: (identifier: string, password: string, isAdmin?: boolean) => Promise<void>;
   logout: () => void;
   loading: boolean;
   isPollMonitor: boolean;
@@ -26,133 +26,59 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-// Optimized request queue for local development
-class LocalRequestQueue {
-  private queue: Array<() => Promise<any>> = [];
-  private processing = false;
-  private readonly maxConcurrent = 10; // Higher limit for local dev
-  private activeRequests = 0;
-
-  async add<T>(request: () => Promise<T>): Promise<T> {
-    return new Promise((resolve, reject) => {
-      this.queue.push(async () => {
-        try {
-          this.activeRequests++;
-          const result = await request();
-          resolve(result);
-        } catch (error) {
-          reject(error);
-        } finally {
-          this.activeRequests--;
-          this.processQueue();
-        }
-      });
-      
-      if (!this.processing) {
-        this.processQueue();
-      }
-    });
-  }
-
-  private async processQueue() {
-    if (this.processing || this.queue.length === 0) return;
-    
-    this.processing = true;
-    
-    // Process multiple requests in parallel up to maxConcurrent
-    const batch = [];
-    while (this.queue.length > 0 && this.activeRequests < this.maxConcurrent) {
-      const request = this.queue.shift();
-      if (request) {
-        batch.push(request());
-      }
-    }
-    
-    // Wait for current batch to complete
-    if (batch.length > 0) {
-      await Promise.allSettled(batch);
-    }
-    
-    this.processing = false;
-    
-    // Process next batch if needed
-    if (this.queue.length > 0) {
-      setTimeout(() => this.processQueue(), 10);
-    }
-  }
-
-  getQueueSize() {
-    return this.queue.length;
-  }
-
-  getActiveRequests() {
-    return this.activeRequests;
-  }
-}
-
-const requestQueue = new LocalRequestQueue();
-
-// Mock user data generator matching your backend
-const createMockUser = (identifier: string, isAdmin: boolean = false) => {
-  const baseId = Math.abs(identifier.split('').reduce((a, b) => a + b.charCodeAt(0), 0));
-  
-  if (isAdmin) {
-    return {
-      id: baseId,
-      email: identifier,
-      name: `Local Admin ${identifier.split('@')[0]}`,
-      type: 'admin',
-      role: identifier.includes('super') ? 'super_admin' : 'admin',
-      is_active: true,
-      createdAt: new Date().toISOString(),
-      hasVoted: false
-    };
-  }
-
-  // Voter user
-  return {
-    id: baseId,
-    studentId: identifier,
-    email: `${identifier}@student.ssc.local`,
-    name: `Student ${identifier}`,
-    type: 'voter',
-    role: 'voter',
-    yearLevel: '4th Year',
-    course: 'Computer Science',
-    is_active: true,
-    hasVoted: false,
-    createdAt: new Date().toISOString()
-  };
-};
-
-// Simulated API delay for local development
-const simulateApiDelay = () => new Promise(resolve => 
-  setTimeout(resolve, Math.random() * 100 + 50) // 50-150ms delay
-);
-
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [loginStats, setLoginStats] = useState({
-    totalProcessed: 0,
-    queueSize: 0,
-    activeRequests: 0
-  });
 
   useEffect(() => {
     const initializeAuth = async () => {
       const token = localStorage.getItem('token');
       const userData = localStorage.getItem('user');
 
+      console.log('🔄 Initializing auth:', { 
+        hasToken: !!token, 
+        hasUserData: !!userData 
+      });
+
       if (token && userData) {
         try {
           const userObj = JSON.parse(userData);
-          setUser(userObj);
+          
+          // Verify token is still valid with backend
+          try {
+            console.log('🔐 Verifying token with backend...');
+            const response = await fetch('http://localhost:5000/api/auth/verify', {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+            });
+
+            if (response.ok) {
+              console.log('✅ Token verified, setting user');
+              setUser(userObj);
+            } else {
+              console.warn('❌ Token verification failed, clearing auth');
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              setUser(null);
+            }
+          } catch (error) {
+            console.warn('❌ Token verification failed (network error), clearing auth');
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            setUser(null);
+          }
         } catch (error) {
-          console.warn('Invalid stored user data, clearing auth');
+          console.warn('❌ Invalid stored user data, clearing auth');
           localStorage.removeItem('token');
           localStorage.removeItem('user');
+          setUser(null);
         }
+      } else {
+        console.log('🔐 No stored auth data found');
+        setUser(null);
       }
       setLoading(false);
     };
@@ -160,80 +86,115 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializeAuth();
   }, []);
 
-  // Update login stats periodically
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setLoginStats({
-        totalProcessed: 0, // You can track this if needed
-        queueSize: requestQueue.getQueueSize(),
-        activeRequests: requestQueue.getActiveRequests()
-      });
-    }, 1000);
+  const login = async (identifier: string, password: string, isAdmin = false) => {
+    try {
+      setLoading(true);
+      console.log(`🔐 Attempting ${isAdmin ? 'admin' : 'voter'} login for:`, identifier);
 
-    return () => clearInterval(interval);
-  }, []);
-
-  const login = async (emailOrStudentId: string, password: string, isAdmin = false) => {
-    // For local development, we'll simulate login without hitting rate limits
-    return requestQueue.add(async () => {
-      try {
-        // Simulate API call delay
-        await simulateApiDelay();
-
-        // For local development, accept any non-empty password
-        if (!password.trim()) {
-          throw new Error('Password is required');
-        }
-
-        // Create mock response matching your backend structure
-        const mockUser = createMockUser(emailOrStudentId, isAdmin);
-        
-        const mockResponse = {
-          user: mockUser,
-          token: `mock_jwt_token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          message: 'Login successful'
-        };
-
-        // Store auth data
-        localStorage.setItem('token', mockResponse.token);
-        localStorage.setItem('user', JSON.stringify(mockResponse.user));
-        setUser(mockResponse.user);
-
-        console.log(`Local login successful: ${isAdmin ? 'Admin' : 'Voter'}`, mockUser.email || mockUser.studentId);
-        
-        return mockResponse;
-      } catch (error: any) {
-        console.error('Local login simulation error:', error);
-        
-        // Provide user-friendly error messages for local development
-        if (!password.trim()) {
-          throw new Error('Password is required for local development simulation');
-        }
-        
-        // Simulate occasional random failures for testing
-        if (Math.random() < 0.02) { // 2% chance of random failure
-          throw new Error('Simulated network error - please try again');
-        }
-        
-        throw new Error(error?.message || 'Login simulation failed');
+      let response;
+      if (isAdmin) {
+        // Admin login
+        response = await api.post('/auth/admin/login', {
+          email: identifier,
+          password: password
+        });
+      } else {
+        // Voter login
+        response = await api.post('/auth/voter/login', {
+          emailOrStudentId: identifier,
+          password: password
+        });
       }
-    });
+
+      const { token, user: userData } = response;
+
+      console.log('✅ Login response received:', { 
+        hasToken: !!token, 
+        hasUserData: !!userData,
+        userType: userData?.type,
+        userRole: userData?.role
+      });
+
+      if (!token) {
+        throw new Error('No authentication token received from server');
+      }
+
+      // Store auth data IMMEDIATELY
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(userData));
+      
+      // Update React state IMMEDIATELY
+      setUser(userData);
+
+      console.log(`✅ Login successful: ${userData?.type} ${userData?.email || userData?.studentId}`);
+      
+      // Verify token was stored correctly
+      setTimeout(() => {
+        const storedToken = localStorage.getItem('token');
+        console.log('🔍 Token storage verification:', {
+          stored: !!storedToken,
+          length: storedToken?.length,
+          matches: storedToken === token
+        });
+      }, 100);
+      
+    } catch (error: any) {
+      console.error('❌ Login error:', error);
+      
+      // Clear any partial auth data on error
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      setUser(null);
+
+      // Provide user-friendly error messages
+      if (error.message?.includes('401') || error.message?.includes('Invalid credentials')) {
+        throw new Error('Invalid credentials. Please check your login details.');
+      } else if (error.message?.includes('404') || error.message?.includes('not found')) {
+        throw new Error('Account not found. Please check your login details.');
+      } else if (error.message?.includes('Network Error') || error.message?.includes('Failed to fetch')) {
+        throw new Error('Unable to connect to the server. Please check your connection.');
+      } else {
+        throw new Error(error.message || 'Login failed. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const logout = () => {
+    console.log('🔐 Logging out...');
+    
     // Clear all auth-related data
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     
     // Reset state
     setUser(null);
-    setLoading(false);
     
-    console.log('Local logout completed');
+    // Clear API queue
+    api.clearQueue();
+    
+    console.log('✅ Logout completed');
   };
 
   // Check if current user is a poll monitor
   const isPollMonitor = user?.role === 'poll_monitor';
+
+  // Debug current auth state
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔐 Auth State Updated:', {
+        user: user ? { 
+          type: user.type, 
+          role: user.role, 
+          email: user.email,
+          id: user.id 
+        } : null,
+        isAuthenticated: !!user,
+        tokenInStorage: !!localStorage.getItem('token')
+      });
+    }
+  }, [user]);
 
   return (
     <AuthContext.Provider
@@ -247,17 +208,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }}
     >
       {children}
-      
-      {/* Development Login Stats Indicator */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="fixed bottom-4 left-4 bg-gray-800 text-white px-3 py-2 rounded-lg shadow-lg z-50 text-xs">
-          <div className="space-y-1">
-            <div>Queue: {loginStats.queueSize}</div>
-            <div>Active: {loginStats.activeRequests}</div>
-            <div>Max Concurrent: 10</div>
-          </div>
-        </div>
-      )}
     </AuthContext.Provider>
   );
 };
